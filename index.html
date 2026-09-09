@@ -580,10 +580,7 @@
         </div>
 
         <div class="card" style="margin-top:16px">
-          <h2>Полный каталог полей PWApartners — что перенесли, что пропустили</h2>
-          <div class="cell-sub" style="line-height:1.8">Перенесли как реальные поля (есть данные): Пуш набор, Айди пуша, Домен, Аудитория/событие, Тип пуша, Заголовок, Текст, День, Статус.</div>
-          <div class="cell-sub" style="line-height:1.8; margin-top:6px">Не перенесли — нет аналога в нашей модели: UUID, Закрыто, Через, Айди сообщения/клика/pwa/домена (нет бэкенда), Системные (дефолтные пуши клиенту не показываются вовсе, см. «Пуши»).</div>
-          <div class="banner note" style="margin-top:14px">Хранение — бессрочно (детальная сырая статистика), в отличие от PWApartners (30 дней). Деньги/revenue-метрики — отложены по ТЗ.</div>
+          <div class="banner note" style="margin:0">Хранение — бессрочно (детальная сырая статистика), в отличие от PWApartners (30 дней). Деньги/revenue-метрики — отложены по ТЗ.</div>
         </div>
       </div>
 
@@ -734,7 +731,10 @@ function genPushStats(p){
   const launchDelay = seed % 45; // сек — наблюдаемость задержки отправка→доставка, DoD п.8
   const day = STATS_DAYS[seed%5];
   const launchTime = `${day} ${String(9+(seed%10)).padStart(2,'0')}:${String(seed%60).padStart(2,'0')}`;
-  return {sent, delivered, clicked, unsub, failed, closed, regs, deps, redeps, launchDelay, launchTime, day};
+  const clickid = 'clk_' + seed.toString(36).slice(0,8);
+  const pwaId = 'pwa_' + (1000 + (seed>>>4) % 9000);
+  const reach = Math.round(sent * (0.55 + (seed%20)/100)); // уникальных юзеров — меньше, чем отправлено сообщений, за счёт повторов
+  return {sent, delivered, clicked, unsub, failed, closed, regs, deps, redeps, reach, launchDelay, launchTime, day, clickid, pwaId};
 }
 /* каталог метрик — тоже настраиваемый тегами, как у PWApartners (значок шестерёнки) */
 const METRICS_CATALOG = {
@@ -753,12 +753,14 @@ const METRICS_CATALOG = {
   crReg:     {label:'CR% Клики/Реги', agg:'ratio', calc:t=>t.clicked?(t.regs/t.clicked*100):0},
   crDep:     {label:'CR% Клики/Депы', agg:'ratio', calc:t=>t.clicked?(t.deps/t.clicked*100):0},
   crRedep:   {label:'CR% Клики/Повторные депы (RD)', agg:'ratio', calc:t=>t.clicked?(t.redeps/t.clicked*100):0},
+  pushesPerUser: {label:'Пушей на юзера', agg:'ratio', calc:t=>t.reach?(t.sent/t.reach):0, suffix:''},
 };
-const STATS_SUM_KEYS = ['sent','delivered','clicked','unsub','failed','closed','regs','deps','redeps'];
+const STATS_SUM_KEYS = ['sent','delivered','clicked','unsub','failed','closed','regs','deps','redeps','reach'];
 function metricValue(defKey, sums){
   const def = METRICS_CATALOG[defKey];
   const raw = def.agg==='sum' ? (sums[def.key]||0) : def.calc(sums);
-  return def.agg==='ratio' ? raw.toFixed(1)+'%' : raw.toLocaleString('ru-RU');
+  const suffix = def.suffix !== undefined ? def.suffix : '%';
+  return def.agg==='ratio' ? raw.toFixed(1)+suffix : raw.toLocaleString('ru-RU');
 }
 function pushRawTitle(p){
   const l = p.langs?.default || Object.values(p.langs||{})[0] || {};
@@ -769,6 +771,8 @@ const TYPE_LABEL = {event:'Событийный', interval:'Интервальн
 const STATS_FIELD_DEFS = {
   name:    {label:'Пуш набор', type:'text'},
   id:      {label:'Айди пуша', type:'text'},
+  clickid: {label:'UUID (Clickid)', type:'text'},
+  pwaId:   {label:'Айди PWA', type:'text'},
   domain:  {label:'Домен', type:'select', options: ()=>[...new Set(pushes.map(p=>p.domain))]},
   event:   {label:'Аудитория', type:'select', options: ()=>Object.keys(EVENT_LABEL), optLabel:v=>EVENT_LABEL[v]},
   type:    {label:'Тип пуша', type:'select', options: ()=>['event','interval','onetime'], optLabel:v=>TYPE_LABEL[v]},
@@ -781,6 +785,8 @@ function statsFieldValue(p, s, field){
   switch(field){
     case 'name': return p.name;
     case 'id': return p.id;
+    case 'clickid': return s.clickid;
+    case 'pwaId': return s.pwaId;
     case 'domain': return p.domain;
     case 'event': return EVENT_LABEL[p.event] || 'Всем';
     case 'type': return TYPE_LABEL[p.type];
