@@ -1,0 +1,1690 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Push — админка WWA</title>
+<style>
+  :root{
+    --bg:#f7f8fb; --sidebar:#ffffff; --surface:#ffffff; --surface-2:#f1f4f9; --surface-3:#e7ebf2;
+    --border:#e3e7ee; --border-2:#d5dbe5;
+    --text:#111827; --text-2:#586174; --text-3:#94a0b3;
+    --accent:#2563eb; --accent-soft:#eaf1ff; --accent-text:#1d4fd1; --ring:#bfd7ff;
+    --purple:#9333ea; --purple-soft:#f5edfe;
+    --green:#16a34a; --green-soft:#eefcf3; --green-ring:#bbf0d1;
+    --amber:#b45309; --amber-soft:#fff8ec; --amber-ring:#fbdfa4;
+    --red:#dc2626; --red-soft:#fef2f2; --red-ring:#fbcfcf;
+    --blue:#2563eb; --blue-soft:#eaf1ff; --blue-ring:#bfd7ff;
+    --shadow-sm: 0 1px 2px rgba(17,24,39,.05);
+    --shadow-md: 0 8px 24px rgba(17,24,39,.10);
+    color-scheme: light;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family: ui-sans-serif, -apple-system, "Inter", "Segoe UI", system-ui, sans-serif;
+    font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--ring); }
+  .app{ display:flex; min-height:100vh; }
+
+  /* ---------------- sidebar (реплика админки) ---------------- */
+  .sidebar{ width:290px; flex-shrink:0; background:var(--sidebar); border-right:1px solid var(--border); display:flex; flex-direction:column; padding:16px 12px; overflow-y:auto; }
+  .sb-top{ display:flex; align-items:center; gap:10px; padding:6px 6px 16px; }
+  .sb-avatar{ width:38px; height:38px; border-radius:50%; background:var(--surface-2); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--text-2); font-size:16px; }
+  .sb-balance{ font-size:15px; font-weight:750; }
+  .sb-balance .plus{ color:var(--green); }
+  .sb-email{ font-size:11.5px; color:var(--text-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:150px; }
+  .sb-back{ margin-left:auto; width:28px; height:28px; border-radius:50%; border:1px solid var(--border-2); background:var(--surface); color:var(--text-2); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+  .sb-pill{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; cursor:pointer; margin-bottom:4px; border:1px solid transparent; }
+  .sb-pill:hover{ background:var(--surface); }
+  .sb-pill.open{ background:var(--surface); }
+  .sb-pill.open.ring{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+  .sb-pill-icon{ width:20px; height:20px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .sb-pill-label{ font-weight:700; font-size:14px; flex:1; }
+  .sb-pill-chev{ color:var(--text-3); font-size:11px; transition:transform .12s; }
+  .sb-pill.open .sb-pill-chev{ transform:rotate(180deg); }
+  .sb-pill.purple .sb-pill-icon{ color:var(--purple); } .sb-pill.purple .sb-pill-label{ color:var(--purple); }
+  .sb-pill.blue .sb-pill-icon{ color:var(--blue); } .sb-pill.blue .sb-pill-label{ color:var(--text); }
+  .sb-pill.amber .sb-pill-icon{ color:var(--amber); } .sb-pill.amber .sb-pill-label{ color:var(--amber); }
+  .sb-pill.green .sb-pill-icon{ color:var(--green); } .sb-pill.green .sb-pill-label{ color:var(--text); }
+
+  .sb-group{ margin-bottom:2px; }
+  .sb-items{ padding:2px 0 8px 14px; display:flex; flex-direction:column; gap:1px; }
+  .sb-item{ display:flex; align-items:center; gap:11px; padding:8px 10px; border-radius:9px; color:var(--text-2); font-size:13px; font-weight:600; cursor:pointer; }
+  .sb-item:hover{ background:var(--surface); color:var(--text); }
+  .sb-item.active{ background:var(--accent-soft); color:var(--accent-text); }
+  .sb-item-icon{ width:17px; height:17px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px; opacity:.85; }
+  .sb-item.active .sb-item-icon{ opacity:1; }
+  .sb-new-badge{ font-size:9px; font-weight:800; padding:1px 5px; border-radius:4px; background:var(--accent); color:#fff; margin-left:auto; }
+
+  /* ---------------- main ---------------- */
+  .main{ flex:1; min-width:0; display:flex; flex-direction:column; }
+  .content{ padding:24px 30px 60px; max-width:1200px; }
+  .view{ display:none; }
+  .view.active{ display:block; }
+  .header{ display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:6px; }
+  .title{ font-size:21px; font-weight:750; letter-spacing:-.015em; margin:0; }
+  .subtitle{ font-size:12.5px; color:var(--text-2); margin-top:4px; max-width:720px; }
+  .header-spacer{ flex:1; }
+
+  .btn{ display:inline-flex; align-items:center; gap:6px; padding:9px 15px; border-radius:9px; font-size:13px; font-weight:650; border:1px solid var(--border-2); background:var(--surface-2); color:var(--text); cursor:pointer; white-space:nowrap; font-family:inherit; }
+  .btn:hover{ background:var(--surface-3); }
+  .btn.primary{ background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:var(--shadow-sm); }
+  .btn.primary:hover{ background:#1d4fd1; }
+  .btn.sm{ padding:6px 11px; font-size:12px; }
+  .btn.ghost{ background:transparent; border-color:transparent; color:var(--text-2); }
+  .btn.ghost:hover{ background:var(--surface); color:var(--text); }
+  .btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .divider{ height:1px; background:var(--border); margin:18px 0; }
+
+  .seg{ display:inline-flex; background:var(--surface); border:1px solid var(--border-2); border-radius:10px; padding:3px; }
+  .seg button{ border:none; background:transparent; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:650; color:var(--text-2); cursor:pointer; font-family:inherit; }
+  .seg button.active{ background:var(--accent); color:#fff; }
+  .seg button:disabled{ opacity:.4; cursor:not-allowed; }
+
+  .stats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:12px; margin:18px 0; }
+  .stat{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+  .stat-label{ font-size:11.5px; color:var(--text-3); font-weight:600; }
+  .stat-value{ font-size:20px; font-weight:750; letter-spacing:-.02em; font-variant-numeric:tabular-nums; margin-top:5px; }
+
+  .table-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow-sm); overflow:hidden; }
+  .table-scroll{ overflow-x:auto; }
+  table{ border-collapse:collapse; width:100%; min-width:820px; }
+  thead th{ text-align:left; font-size:11px; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:.05em; padding:12px 16px; background:var(--surface-2); border-bottom:1px solid var(--border); white-space:nowrap; }
+  tbody td{ padding:13px 16px; border-bottom:1px solid var(--border); font-size:13px; vertical-align:middle; white-space:nowrap; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr.clickable:hover{ background:var(--surface-2); cursor:pointer; }
+  .cell-sub{ font-size:11.5px; color:var(--text-3); margin-top:1px; }
+  .empty-state{ text-align:center; padding:56px 20px; color:var(--text-3); }
+  .empty-state .big{ font-size:32px; margin-bottom:10px; }
+
+  .pill{ display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:650; }
+  .pill.green{ background:var(--green-soft); color:var(--green); box-shadow:inset 0 0 0 1px var(--green-ring); }
+  .pill.blue{ background:var(--blue-soft); color:var(--blue); box-shadow:inset 0 0 0 1px var(--blue-ring); }
+  .pill.red{ background:var(--red-soft); color:var(--red); box-shadow:inset 0 0 0 1px var(--red-ring); }
+  .pill.amber{ background:var(--amber-soft); color:var(--amber); box-shadow:inset 0 0 0 1px var(--amber-ring); }
+  .pill.grey{ background:var(--surface-2); color:var(--text-2); box-shadow:inset 0 0 0 1px var(--border-2); }
+  .pill.indigo{ background:var(--accent-soft); color:var(--accent-text); box-shadow:inset 0 0 0 1px var(--ring); }
+
+  .toggle{ width:36px; height:21px; border-radius:20px; background:var(--surface-3); position:relative; cursor:pointer; display:inline-block; flex-shrink:0; }
+  .toggle.on{ background:var(--accent); }
+  .toggle::after{ content:''; position:absolute; top:2px; left:2px; width:17px; height:17px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.4); transition:left .12s; }
+  .toggle.on::after{ left:17px; }
+
+  label.fl{ display:block; font-size:12px; color:var(--text-2); font-weight:650; margin-bottom:6px; }
+  input[type=text], input[type=date], input[type=time], textarea, select{ width:100%; border:1px solid var(--border-2); border-radius:9px; padding:10px 12px; font-size:13.5px; font-family:inherit; color:var(--text); background:var(--surface); }
+  textarea{ resize:vertical; line-height:1.5; }
+  input:focus, textarea:focus, select:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--ring); }
+  input::placeholder, textarea::placeholder{ color:var(--text-3); }
+  .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12.5px; }
+
+  /* ---- flow (единая вертикальная форма) ---- */
+  .flow-wrap{ display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:22px; align-items:start; }
+  .flow-steps{ display:flex; flex-direction:column; }
+
+  /* группы-решения: Когда / Кому / Что / Проверка */
+  .rail{ display:flex; gap:6px; margin-bottom:22px; position:sticky; top:0; background:var(--bg); padding:10px 0; z-index:5; border-bottom:1px solid var(--border); }
+  .rail-item{ flex:1; display:flex; align-items:center; gap:8px; padding:9px 14px; border-radius:10px; cursor:pointer; border:1px solid transparent; font-size:12.5px; font-weight:700; color:var(--text-3); }
+  .rail-item:hover{ background:var(--surface); color:var(--text-2); }
+  .rail-item.active{ background:var(--accent-soft); border-color:var(--ring); color:var(--accent-text); }
+  .rail-dot{ width:7px; height:7px; border-radius:50%; background:var(--border-2); flex-shrink:0; }
+  .rail-dot.filled{ background:var(--green); }
+  .rail-item.active .rail-dot{ background:var(--accent); }
+
+  .fgroup{ padding-bottom:34px; margin-bottom:30px; border-bottom:1px solid var(--border); scroll-margin-top:70px; }
+  .fgroup:last-child{ border-bottom:none; margin-bottom:0; }
+  .fgroup-head{ margin-bottom:18px; }
+  .fgroup-title{ font-size:18px; font-weight:750; letter-spacing:-.01em; }
+  .fgroup-sub{ font-size:12.5px; color:var(--text-3); margin-top:4px; line-height:1.5; max-width:560px; }
+
+  .fsub{ margin-bottom:24px; }
+  .fsub:last-child{ margin-bottom:0; }
+  .fsub-label{ font-size:12.5px; font-weight:700; color:var(--text-2); margin-bottom:10px; }
+  .fstep-hint{ font-size:12px; color:var(--text-3); margin-top:8px; line-height:1.55; }
+
+  .needs-decision{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--amber); font-weight:600; }
+  .needs-decision::before{ content:''; width:6px; height:6px; border-radius:50%; background:var(--amber); flex-shrink:0; }
+
+  .funnel-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .funnel-card{ flex:1; min-width:130px; background:var(--surface); border:1px solid var(--border-2); border-radius:11px; padding:13px 15px; cursor:pointer; }
+  .funnel-card:hover{ border-color:var(--ring); }
+  .funnel-card.active{ background:var(--accent-soft); border-color:var(--accent); }
+  .funnel-card-name{ font-size:12px; font-weight:650; color:var(--text-2); }
+  .funnel-card.active .funnel-card-name{ color:var(--accent-text); }
+  .funnel-card-count{ font-size:17px; font-weight:750; margin-top:4px; font-variant-numeric:tabular-nums; }
+
+  /* ---- multi-select combobox (домен/нейминг/приложения) ---- */
+  .msel{ position:relative; }
+  .msel-header{ display:flex; align-items:center; gap:10px; padding:9px 12px; border:1px solid var(--border-2); border-radius:9px; background:var(--surface); cursor:pointer; }
+  .msel-header:hover{ border-color:var(--ring); }
+  .msel.open .msel-header{ border-color:var(--accent); box-shadow:0 0 0 3px var(--ring); }
+  .msel-label{ font-size:11px; color:var(--text-3); font-weight:650; flex-shrink:0; }
+  .msel-summary{ font-size:13px; font-weight:650; flex:1; }
+  .msel-chevron{ color:var(--text-3); font-size:11px; transition:transform .12s; flex-shrink:0; }
+  .msel.open .msel-chevron{ transform:rotate(180deg); }
+  .msel-panel{ position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:25; background:var(--surface); border:1px solid var(--border-2); border-radius:10px; box-shadow:var(--shadow-md); padding:10px; flex-direction:column; }
+  .msel-search{ width:100%; border:1px solid var(--border-2); border-radius:8px; padding:7px 10px; font-size:12.5px; margin-bottom:8px; font-family:inherit; }
+  .msel-selectall{ font-size:11.5px; font-weight:700; color:var(--amber); cursor:pointer; margin-bottom:6px; }
+  .msel-selectall:hover{ text-decoration:underline; }
+  .msel-list{ overflow-y:auto; max-height:220px; display:flex; flex-direction:column; gap:1px; }
+  .msel-row{ display:flex; align-items:center; gap:8px; padding:7px 6px; border-radius:6px; cursor:pointer; font-size:12.5px; }
+  .msel-row:hover{ background:var(--surface-2); }
+  .msel-row input[type=checkbox]{ accent-color:var(--accent); width:14px; height:14px; flex-shrink:0; }
+  .msel-badge{ font-size:9.5px; font-weight:700; padding:1px 6px; border-radius:4px; background:var(--surface-2); color:var(--text-3); border:1px solid var(--border-2); margin-left:auto; }
+
+  .chip-row{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{ padding:8px 14px; border-radius:9px; border:1px solid var(--border-2); background:var(--surface); color:var(--text-2); font-size:12.5px; font-weight:650; cursor:pointer; font-family:inherit; }
+  .chip:hover{ border-color:var(--ring); color:var(--text); }
+  .chip.active{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent-text); }
+  .chip.custom{ border-style:dashed; }
+
+  .banner{ display:flex; align-items:flex-start; gap:9px; padding:11px 13px; border-radius:10px; font-size:12px; font-weight:600; line-height:1.5; margin-bottom:14px; }
+  .banner.new{ background:var(--blue-soft); color:var(--blue); border:1px solid var(--blue-ring); }
+  .banner.note{ background:var(--surface-2); color:var(--text-2); border:1px solid var(--border-2); }
+  .banner.warn{ background:var(--amber-soft); color:var(--amber); border:1px solid var(--amber-ring); }
+
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .field{ margin-bottom:14px; }
+  .field:last-child{ margin-bottom:0; }
+
+  .lang-tabs{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+  .lang-tab{ padding:7px 13px; border-radius:9px; border:1px solid var(--border-2); background:var(--surface); font-size:12.5px; font-weight:650; color:var(--text-2); cursor:pointer; display:flex; align-items:center; gap:6px; font-family:inherit; }
+  .lang-tab.active{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent-text); }
+  .lang-tab .fb{ font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:4px; background:var(--surface-2); color:var(--text-3); }
+  .lang-tab.active .fb{ background:var(--surface); }
+  .spin-meta{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--text-3); margin-top:8px; }
+  .spin-bad{ color:var(--red); font-weight:650; }
+  .expans{ margin-top:10px; border:1px solid var(--border); border-radius:9px; overflow:hidden; }
+  .expans-row{ padding:8px 12px; border-bottom:1px solid var(--border); font-size:12.5px; }
+  .expans-row:last-child{ border-bottom:none; }
+  .expans-row:nth-child(odd){ background:var(--surface-2); }
+
+  /* ---- audience builder (внутри flow) ---- */
+  .grp{ border:1px solid var(--border-2); border-radius:11px; padding:14px; margin-bottom:10px; background:var(--surface); }
+  .grp-head{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .grp-title{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-3); }
+  .cond{ display:flex; gap:8px; align-items:center; margin-bottom:8px; background:var(--surface-2); border:1px solid var(--border-2); border-radius:9px; padding:8px 10px; flex-wrap:wrap; }
+  .cond select, .cond input{ width:auto; min-width:120px; flex:1; padding:7px 9px; font-size:12.5px; background:var(--surface); }
+  .cond .rm{ width:26px; height:26px; border-radius:7px; border:1px solid var(--border-2); background:var(--surface); color:var(--text-3); cursor:pointer; flex-shrink:0; font-size:14px; line-height:1; }
+  .cond .rm:hover{ color:var(--red); border-color:var(--red-ring); background:var(--red-soft); }
+  .joiner{ display:inline-flex; background:var(--surface); border:1px solid var(--border-2); border-radius:7px; overflow:hidden; }
+  .joiner button{ border:none; background:transparent; padding:5px 12px; font-size:11.5px; font-weight:700; color:var(--text-3); cursor:pointer; font-family:inherit; }
+  .joiner button.active{ background:var(--accent); color:#fff; }
+  .reach-mini{ display:flex; align-items:center; gap:10px; padding:10px 13px; border-radius:10px; background:var(--accent-soft); border:1px solid var(--ring); margin-top:12px; }
+  .reach-mini b{ font-size:16px; color:var(--accent-text); }
+
+  /* ---- chain (событийные повторы) ---- */
+  .chain-mode-seg{ margin-bottom:12px; }
+  .step-chip{ display:flex; align-items:center; gap:5px; background:var(--surface); border:1px solid var(--border-2); border-radius:9px; padding:6px 8px; }
+  .step-chip input{ width:52px; padding:5px 7px; font-size:12.5px; text-align:center; }
+  .step-chip select{ width:auto; padding:5px 6px; font-size:12px; }
+  .step-chip .rm{ width:22px; height:22px; border-radius:6px; border:1px solid var(--border-2); background:var(--surface); color:var(--text-3); cursor:pointer; font-size:13px; line-height:1; }
+  .steps-row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+
+  /* ---- media ---- */
+  .dropzone{ border:1.5px dashed var(--border-2); border-radius:12px; padding:22px; text-align:center; color:var(--text-3); font-size:12.5px; cursor:pointer; }
+  .dropzone:hover{ border-color:var(--ring); color:var(--text-2); }
+
+  /* ---- review summary ---- */
+  .review-card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .review-row{ display:flex; justify-content:space-between; gap:14px; padding:11px 16px; border-bottom:1px solid var(--border); font-size:13px; }
+  .review-row:last-child{ border-bottom:none; }
+  .review-label{ color:var(--text-3); font-weight:600; }
+  .review-val{ font-weight:650; text-align:right; }
+  .review-val.empty{ color:var(--text-3); font-weight:500; }
+
+  /* ---- preview column ---- */
+  .preview-col{ position:sticky; top:20px; }
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 20px; }
+  .card h2{ font-size:11.5px; font-weight:700; margin:0 0 14px; color:var(--text-3); text-transform:uppercase; letter-spacing:.05em; }
+  .phone{ background:linear-gradient(160deg,#2a3040,#171b26); border-radius:26px; padding:18px 12px 22px; box-shadow:var(--shadow-md); }
+  .phone-time{ color:rgba(255,255,255,.6); font-size:11px; text-align:center; margin-bottom:12px; font-weight:600; }
+  .notif{ border-radius:16px; padding:11px 12px; display:flex; gap:10px; background:rgba(255,255,255,.96); }
+  .notif-icon{ width:34px; height:34px; border-radius:9px; flex-shrink:0; background:linear-gradient(135deg,#2563eb,#60a5fa); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; }
+  .notif-body{ min-width:0; flex:1; }
+  .notif-app{ font-size:10.5px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; display:flex; justify-content:space-between; gap:8px; }
+  .notif-title{ font-size:13px; font-weight:750; color:#111827; margin-top:2px; word-wrap:break-word; }
+  .notif-text{ font-size:12.5px; color:#374151; margin-top:1px; word-wrap:break-word; }
+  .notif-banner{ margin-top:8px; height:60px; border-radius:8px; background:linear-gradient(120deg,#2563eb,#60a5fa); display:flex; align-items:center; justify-content:center; color:#fff; font-size:10px; font-weight:700; }
+  .plat-seg{ margin-bottom:14px; }
+  [dir=rtl]{ text-align:right; }
+
+  @media (max-width: 900px){
+    .flow-wrap{ grid-template-columns: 1fr; }
+    .preview-col{ position:static; margin-bottom:20px; }
+  }
+  @media (max-width: 700px){
+    .sidebar{ width:240px; }
+    .grid-2, .grid-3{ grid-template-columns: 1fr; }
+  }
+
+  .ref{ display:inline-flex; align-items:center; gap:4px; font-size:9.5px; font-weight:700; padding:2px 7px; border-radius:5px; background:var(--blue-soft); color:var(--blue); border:1px solid var(--blue-ring); white-space:nowrap; text-transform:none; letter-spacing:0; }
+  .open-q{ display:inline-flex; align-items:center; gap:5px; font-size:9.5px; font-weight:700; padding:2px 7px; border-radius:5px; background:var(--amber-soft); color:var(--amber); border:1px solid var(--amber-ring); white-space:nowrap; }
+
+  .modal-overlay{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:300; align-items:center; justify-content:center; padding:20px; }
+  .modal-overlay.show{ display:flex; }
+  .modal{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 24px; width:100%; max-width:440px; box-shadow:var(--shadow-md); }
+  .modal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; gap:12px; }
+  .icon-x{ cursor:pointer; color:var(--text-3); font-size:18px; line-height:1; padding:2px 4px; }
+  .icon-x:hover{ color:var(--text); }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sb-top">
+      <div class="sb-avatar">🎧</div>
+      <div>
+        <div class="sb-balance">$44.00 <span class="plus">+</span></div>
+        <div class="sb-email">albert.p@wildwildg…</div>
+      </div>
+      <div class="sb-back">‹</div>
+    </div>
+
+    <div class="sb-pill purple"><span class="sb-pill-icon">⚙️</span><span class="sb-pill-label">Админ панель</span><span class="sb-pill-chev">▾</span></div>
+
+    <div class="sb-pill blue"><span class="sb-pill-icon">🏠</span><span class="sb-pill-label" style="color:var(--text)">Основные</span><span class="sb-pill-chev">▾</span></div>
+
+    <div class="sb-pill blue"><span class="sb-pill-icon">🍎</span><span class="sb-pill-label" style="color:var(--text)">Статистика</span><span class="sb-pill-chev">▾</span></div>
+    <div class="sb-pill blue"><span class="sb-pill-icon">🤖</span><span class="sb-pill-label" style="color:var(--text)">Статистика</span><span class="sb-pill-chev">▾</span></div>
+
+    <!-- ====== НОВОЕ: Пуши ====== -->
+    <div class="sb-pill green open ring" id="sb-push-pill" onclick="toggleSbGroup('push')"><span class="sb-pill-icon">🔔</span><span class="sb-pill-label" style="color:var(--text)">Пуши</span><span class="sb-new-badge">NEW</span><span class="sb-pill-chev" id="sb-push-chev">▴</span></div>
+    <div class="sb-items" id="sb-push-items">
+      <div class="sb-item active" data-view="pushes" onclick="showView('pushes')"><span class="sb-item-icon">🔔</span>Все пуши</div>
+      <div class="sb-item" data-view="audiences" onclick="showView('audiences')"><span class="sb-item-icon">◎</span>Аудитории</div>
+    </div>
+
+    <!-- ====== НОВОЕ: Статистика (push) ====== -->
+    <div class="sb-pill green" id="sb-pstats-pill" onclick="toggleSbGroup('pstats')"><span class="sb-pill-icon">📈</span><span class="sb-pill-label" style="color:var(--text)">Статистика push</span><span class="sb-new-badge">NEW</span><span class="sb-pill-chev" id="sb-pstats-chev">▾</span></div>
+    <div class="sb-items" id="sb-pstats-items" style="display:none">
+      <div class="sb-item" data-view="stats" onclick="showView('stats')"><span class="sb-item-icon">▦</span>Push-статистика <span class="pill grey" style="margin-left:auto">Э4</span></div>
+    </div>
+
+    <div class="sb-pill amber"><span class="sb-pill-icon">➤</span><span class="sb-pill-label" style="color:var(--amber)">Другое</span><span class="sb-pill-chev">▾</span></div>
+  </aside>
+
+  <main class="main">
+    <div class="content">
+      <!-- ============== СПИСОК ПУШЕЙ ============== -->
+      <div class="view active" id="view-pushes">
+        <div class="header">
+          <div>
+            <h1 class="title">Push</h1>
+            <div class="subtitle">Дефолтные системные пуши в этот список не попадают — клиент видит и настраивает только свои. Смежная логика подключена автоматически.</div>
+          </div>
+          <div class="header-spacer"></div>
+          <button class="btn primary" onclick="startCreate()">+ Создать</button>
+        </div>
+
+        <div class="stats">
+          <div class="stat"><div class="stat-label">Всего пушей</div><div class="stat-value" id="st-total">0</div></div>
+          <div class="stat"><div class="stat-label">Активных</div><div class="stat-value" id="st-active">0</div></div>
+          <div class="stat"><div class="stat-label">Клиентов охвачено</div><div class="stat-value">18 420</div></div>
+        </div>
+
+        <div class="seg" id="type-seg" style="margin-bottom:16px">
+          <button class="active" data-t="event" onclick="setTypeFilter('event')">Событийные</button>
+          <button data-t="interval" onclick="setTypeFilter('interval')">Интервальные</button>
+          <button data-t="onetime" onclick="setTypeFilter('onetime')">Разовые</button>
+        </div>
+
+        <div class="table-card">
+          <div class="table-scroll">
+            <table>
+              <thead><tr>
+                <th>Название</th><th>Тип</th><th>Аудитория</th><th>Домен / приложение</th><th>Языки</th><th>Время</th><th>Статус</th>
+              </tr></thead>
+              <tbody id="push-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ============== СОЗДАНИЕ ПУША — ОДНА ВЕРТИКАЛЬНАЯ ФОРМА ============== -->
+      <div class="view" id="view-create">
+        <div class="header">
+          <div>
+            <button class="btn sm ghost" onclick="showView('pushes')">← Отменить</button>
+            <h1 class="title" style="margin-top:10px">Создание Push уведомления</h1>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:20px" id="packname-card">
+          <label class="fl">Название пушпака <span style="color:var(--red)">*</span></label>
+          <input type="text" id="pack-name-input" placeholder="напр. GM96 — воронка после установки" oninput="onPackNameEdit(this.value)">
+          <div class="cell-sub" id="pack-name-error" style="color:var(--red); display:none; margin-top:6px">Название обязательно — без него пак не сохранить.</div>
+        </div>
+
+        <div class="flow-wrap">
+          <div class="flow-steps">
+
+            <div class="rail" id="flow-rail">
+              <div class="rail-item active" data-g="when" onclick="jumpTo('when')"><span class="rail-dot filled"></span>Когда</div>
+              <div class="rail-item" data-g="who" onclick="jumpTo('who')"><span class="rail-dot" id="rail-dot-who"></span>Кому</div>
+              <div class="rail-item" data-g="what" onclick="jumpTo('what')"><span class="rail-dot" id="rail-dot-what"></span>Что</div>
+            </div>
+
+            <!-- ГРУППА 1: КОГДА ---------------- -->
+            <div class="fgroup" id="fg-when">
+              <div class="fgroup-head">
+                <div class="fgroup-title">Когда отправляем</div>
+                <div class="fgroup-sub">Тип пуша сразу определяет, как настраивается тайминг ниже.</div>
+              </div>
+
+              <div class="fsub">
+                <div class="fsub-label">Тип пуша</div>
+                <div class="seg" id="ctype-seg">
+                  <button class="active" data-t="event" onclick="setCreateType('event')">Событийный</button>
+                  <button data-t="interval" onclick="setCreateType('interval')">Интервальный <span class="pill grey" style="margin-left:5px">Э2</span></button>
+                  <button data-t="onetime" onclick="setCreateType('onetime')">Разовый <span class="pill grey" style="margin-left:5px">Э3</span></button>
+                </div>
+              </div>
+
+              <div class="fsub" id="fs5-wrap">
+                <div class="fsub-label" id="fs5-label">Тайминг</div>
+                <div id="fs5-body"></div>
+              </div>
+            </div>
+
+            <!-- ГРУППА 2: КОМУ ---------------- -->
+            <div class="fgroup" id="fg-who">
+              <div class="fgroup-head">
+                <div class="fgroup-title">Кому отправляем</div>
+                <div class="fgroup-sub">Домен/нейминг настраиваются вручную ниже — или выбирается готовая переиспользуемая аудитория, тогда гео уже не нужно.</div>
+              </div>
+
+              <div class="fsub">
+                <div class="fsub-label">Домен, нейминг или аудитория</div>
+                <div class="seg" id="target-seg" style="margin-bottom:14px">
+                  <button class="active" data-v="domain" onclick="setTargetMode('domain')">Домен</button>
+                  <button data-v="naming" onclick="setTargetMode('naming')">Нейминг</button>
+                  <button data-v="audience" onclick="setTargetMode('audience')">Аудитория</button>
+                </div>
+                <div id="target-body"></div>
+              </div>
+
+              <div class="fsub" id="fsub-geo">
+                <div class="fsub-label">Гео</div>
+                <div class="grid-2">
+                  <div class="field"><label class="fl">Гео (пусто = все страны)</label><div id="geo-msel-wrap"></div></div>
+                  <div class="field"><label class="fl">Таймзона</label><select><option>По гео пользователя</option><option>UTC</option></select></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ГРУППА 3: ЧТО ---------------- -->
+            <div class="fgroup" id="fg-what">
+              <div class="fgroup-head">
+                <div class="fgroup-title">Что отправляем</div>
+                <div class="fgroup-sub">Каждый язык независим — своя цепочка спинтакса, «Глобально» для тех, у кого нет своего языка. Для событийных пушей то же самое действует внутри каждой ветки события отдельно.</div>
+              </div>
+
+              <!-- дерево веток: событие / расписание / дата+время — общий паттерн для всех 3 типов -->
+              <div class="fsub">
+                <div class="fsub-label" id="branches-fsub-label">Ветки по событию воронки</div>
+                <div class="fstep-hint" id="branches-hint" style="margin-top:0; margin-bottom:12px"></div>
+                <div id="branches-list"></div>
+                <button class="btn sm" id="add-branch-btn" onclick="addBranch()">+ Добавить событие</button>
+              </div>
+
+              <div class="fsub">
+                <div class="fsub-label">Оформление</div>
+                <div class="field"><label class="fl">Баннер (опционально)</label>
+                  <div class="dropzone" onclick="toggleCBanner()"><span id="c-banner-label">Перетащите файл или нажмите — до 7 MB</span></div>
+                </div>
+                <div class="fstep-hint"><span class="needs-decision">один спек изображения на все три платформы — размеры уточняются с командой</span></div>
+              </div>
+
+              <div class="fsub">
+                <div class="fsub-label">Ссылка</div>
+                <div class="field"><label class="fl">URL (опционально — по умолчанию ссылка потока)</label><input type="text" class="mono" id="c-link-input" placeholder="https://…"></div>
+                <div class="banner warn">⚠️ Если юзер тапнул именно по этому пушу — новая ссылка навсегда заменяет вебвью-поток на устройстве. Два тапа подряд по разным пушам — last-write-wins.</div>
+              </div>
+
+              <button class="btn primary" style="width:100%; justify-content:center; padding:13px; margin-top:6px" onclick="finishCreate()">Завершить</button>
+            </div>
+
+          </div>
+
+          <!-- превью -->
+          <div class="preview-col">
+            <div class="card">
+              <h2>Предпросмотр <span class="cell-sub" id="c-preview-lang-label" style="text-transform:none; font-weight:600; letter-spacing:0"></span></h2>
+              <div class="seg plat-seg" id="c-preview-seg"></div>
+              <div class="phone">
+                <div class="phone-time">9:41</div>
+                <div id="c-notif"></div>
+              </div>
+              <div class="cell-sub" id="c-preview-hint" style="margin-top:10px"></div>
+            </div>
+            <div class="card" style="margin-top:12px">
+              <h2>Синтаксис спинтакса</h2>
+              <div class="cell-sub" style="line-height:1.6">Разделяйте варианты текста символом « | », объединяйте связанные блоки в { фигурные скобки } — вложенность допустима.</div>
+              <div class="mono" style="margin-top:10px; font-size:11.5px; line-height:1.6; color:var(--text-2)">
+                Заголовок: {{👑|💎|🏆}{Пополни баланс — открой VIP-статус|Депозит поднимает тебя на новый уровень|Обнови счёт и почувствуй премиум}}<br><br>
+                Сообщение: {{Депозит открывает доступ к эксклюзивным бонусам|Пополнение — шаг к настоящему комфорту игры|Обнови баланс и играй увереннее}{💰|🔥|✨}}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============== МОДАЛКА ПЕРЕВОДА ЯЗЫКА ============== -->
+      <div class="modal-overlay" id="translate-modal">
+        <div class="modal">
+          <div class="modal-head"><h2 style="margin:0">Перевести с языка</h2><span class="icon-x" onclick="closeTranslateModal()">×</span></div>
+          <div class="cell-sub" style="margin-bottom:12px">Алгоритм перевода — отдельная задача, здесь только заглушка интерфейса.</div>
+          <div id="translate-source-list"></div>
+        </div>
+      </div>
+
+      <!-- ============== АУДИТОРИИ ============== -->
+      <div class="view" id="view-audiences">
+        <div class="header">
+          <div>
+            <h1 class="title">Аудитории</h1>
+            <div class="subtitle">Переиспользуемый набор условий — доступен при создании пуша как альтернатива домену/неймингу. Формула пересчитывается на момент отправки, список не заморожен.</div>
+          </div>
+          <div class="header-spacer"></div>
+          <button class="btn primary" onclick="openAudienceCreate()">+ Создать аудиторию</button>
+        </div>
+
+        <div class="table-card" id="audiences-list-card">
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Название</th><th>Условия</th><th>Охват</th><th></th></tr></thead>
+              <tbody id="audiences-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" id="audience-create-card" style="display:none; margin-top:16px">
+          <h2>Новая аудитория</h2>
+          <div class="field"><label class="fl">Название</label><input type="text" id="aud-name-input" placeholder="напр. UA+KZ, домен, деп 1+"></div>
+          <div class="fsub-label" style="margin-top:16px">Условия</div>
+          <div id="aud-groups"></div>
+          <button class="btn sm" onclick="addAudGroup()">+ Группа условий</button>
+          <div class="reach-mini" style="margin-top:16px"><span>Оценочный охват:</span><b id="aud-reach-preview">—</b></div>
+          <div class="apply-row" style="margin-top:16px; display:flex; justify-content:flex-end; gap:8px">
+            <button class="btn" onclick="closeAudienceCreate()">Отмена</button>
+            <button class="btn primary" onclick="saveNewAudience()">Сохранить аудиторию</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============== СТАТИСТИКА (заглушка Э4) ============== -->
+      <div class="view" id="view-stats">
+        <div class="header">
+          <div>
+            <h1 class="title">Push-статистика</h1>
+            <div class="subtitle">Отдельный самодостаточный модуль, не объединяется с общей трафик-аналитикой. Числа — демонстрационные (нет реальной серверной агрегации), но модель полей, фильтров и группировки — по разобранному референсу PWApartners: один общий каталог полей работает и для фильтров, и для группировки.</div>
+          </div>
+        </div>
+
+        <div class="stats" id="stats-cards"></div>
+
+        <div class="toolbar" style="align-items:center">
+          <div class="seg" id="stats-group-seg">
+            <button class="active" data-g="push" onclick="setStatsPreset('push')">По пушам</button>
+            <button data-g="domain" onclick="setStatsPreset('domain')">По доменам</button>
+            <button data-g="day" onclick="setStatsPreset('day')">По дням</button>
+          </div>
+          <select id="stats-period" onchange="setStatsPeriod(this.value)" style="width:auto">
+            <option value="all">Весь период</option>
+            <option value="today">Сегодня</option>
+            <option value="yesterday">Вчера</option>
+            <option value="daybefore">Позавчера</option>
+            <option value="7d">Последние 7 дней</option>
+          </select>
+          <button class="btn sm" onclick="toggleStatsPanel('group')">Группировка (<span id="stats-group-count">0</span>)</button>
+          <button class="btn sm" onclick="toggleStatsPanel('metrics')">⚙ Метрики (<span id="stats-metrics-count">0</span>)</button>
+          <button class="btn sm" onclick="toggleStatsPanel('filter')">Фильтры (<span id="stats-filter-count">0</span>)</button>
+        </div>
+
+        <div class="card" id="stats-group-panel" style="display:none">
+          <h2>Группировка <span class="cell-sub" style="text-transform:none; font-weight:600; letter-spacing:0; margin-left:6px">— порядок тегов = порядок колонок</span></h2>
+          <div id="stats-group-selected" style="margin-bottom:12px"></div>
+          <div class="fsub-label" style="margin-bottom:8px">Доступные поля</div>
+          <div class="chip-row" id="stats-group-available"></div>
+        </div>
+
+        <div class="card" id="stats-metrics-panel" style="display:none">
+          <h2>Метрики <span class="cell-sub" style="text-transform:none; font-weight:600; letter-spacing:0; margin-left:6px">— какие колонки метрик показывать в таблице</span></h2>
+          <div id="stats-metrics-selected" style="margin-bottom:12px"></div>
+          <div class="fsub-label" style="margin-bottom:8px">Доступные метрики</div>
+          <div class="chip-row" id="stats-metrics-available"></div>
+        </div>
+
+        <div class="card" id="stats-filter-panel" style="display:none">
+          <h2>Фильтры</h2>
+          <div id="stats-filter-rows"></div>
+          <div class="apply-row" style="display:flex; gap:8px">
+            <button class="btn sm" onclick="addStatsFilter()">+ Добавить фильтр</button>
+            <span style="flex:1"></span>
+            <button class="btn sm ghost" onclick="resetStatsFilters()">Сбросить фильтры</button>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-scroll">
+            <table id="stats-table">
+              <thead><tr id="stats-thead-row"></tr></thead>
+              <tbody id="stats-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <h2>Полный каталог полей PWApartners — что перенесли, что пропустили</h2>
+          <div class="cell-sub" style="line-height:1.8">Перенесли как реальные поля (есть данные): Пуш набор, Айди пуша, Домен, Аудитория/событие, Тип пуша, Заголовок, Текст, День, Статус.</div>
+          <div class="cell-sub" style="line-height:1.8; margin-top:6px">Не перенесли — нет аналога в нашей модели: UUID, Закрыто, Через, Айди сообщения/клика/pwa/домена (нет бэкенда), Системные (дефолтные пуши клиенту не показываются вовсе, см. «Пуши»).</div>
+          <div class="banner note" style="margin-top:14px">Хранение — бессрочно (детальная сырая статистика), в отличие от PWApartners (30 дней). Деньги/revenue-метрики — отложены по ТЗ.</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script>
+/* ===================== СПИНТАКС (проверенный движок, без изменений в логике) ===================== */
+function tokenizeSpintax(str){
+  let pos = 0, malformed = false;
+  function parseSeq(depth){
+    const seq = []; let buf = '';
+    while (pos < str.length){
+      const ch = str[pos];
+      if (ch === '{'){ if (buf){ seq.push({type:'text', v:buf}); buf=''; } pos++; seq.push(parseChoice(depth+1)); }
+      else if (ch === '}'){ if (depth === 0){ malformed = true; buf += ch; pos++; continue; } break; }
+      else if (ch === '|'){ break; }
+      else { buf += ch; pos++; }
+    }
+    if (buf) seq.push({type:'text', v:buf});
+    return seq;
+  }
+  function parseChoice(depth){
+    const opts = [parseSeq(depth)];
+    while (pos < str.length && str[pos] === '|'){ pos++; opts.push(parseSeq(depth)); }
+    if (pos < str.length && str[pos] === '}'){ pos++; } else { malformed = true; }
+    return {type:'choice', opts};
+  }
+  const tree = parseSeq(0);
+  return {tree, malformed};
+}
+function countCombos(seq){ return seq.reduce((acc,node)=>{ if (node.type==='text') return acc; const sub = node.opts.reduce((s,o)=> s + countCombos(o), 0); return acc * (sub || 1); }, 1); }
+function renderSeq(seq){ return seq.map(node=>{ if (node.type==='text') return node.v; const opt = node.opts[Math.floor(Math.random()*node.opts.length)]; return renderSeq(opt); }).join(''); }
+function resolveSpintax(str){
+  if (!str) return {text:'', combos:0, malformed:false};
+  const {tree, malformed} = tokenizeSpintax(str);
+  return {text: renderSeq(tree), combos: countCombos(tree), malformed};
+}
+
+/* ===================== ДАТАСЕТ (мок, визуал-онли) ===================== */
+const LANGS = [
+  {code:'ru', name:'Русский', fallback:false},
+  {code:'en', name:'English', fallback:false},
+  {code:'ar', name:'العربية', fallback:false, rtl:true},
+  {code:'default', name:'По умолчанию', fallback:true},
+];
+const SUBS_TOTAL = 184320;
+const FUNNEL_COUNTS = {install: 184320, reg: 71200, dep: 24860, redep2: 9410};
+
+// клиентские пуши — дефолтные/системные сюда НЕ попадают, клиент их не видит и не настраивает
+let pushes = [
+  { id:'ps_1001', name:'GM96 — рег после установки', type:'event', event:'install', delay:'5m',
+    domain:'gm96.top', target:'naming', geo:'', on:true,
+    langs:{ru:{title:'{Эй|Привет}, не теряй бонус!', msg:'Регистрация займёт {минуту|30 секунд}, бонус {200%|100 FS} ждёт'}, default:{title:'Bonus is waiting', msg:'Finish sign-up now'}},
+    plats:{ios:true, android:true, pwa:false}, link:'' },
+  { id:'ps_1002', name:'Реактивация — 2-й депозит', type:'event', event:'redep2', delay:'1d',
+    domain:'brz-domain.com', target:'domain', geo:'UA, KZ', on:false,
+    langs:{ru:{title:'Соскучились 👋', msg:'Вернись и получи {кэшбэк 15%|бонус на редеп|20 фриспинов}'}, default:{title:'We missed you', msg:'Come back for a bonus'}},
+    plats:{ios:true, android:true, pwa:true}, link:'' },
+  { id:'ps_1003', name:'VIP boost — депозит', type:'event', event:'dep', delay:'1h',
+    domain:'brz-domain.com', target:'domain', geo:'', on:true,
+    langs:{ru:{title:'VIP {статус|уровень} обновлён', msg:'{Эксклюзивный|Персональный} бонус {до 500$|до 50000₽} уже начислен'}, default:{title:'VIP status updated', msg:'Exclusive bonus credited'}},
+    plats:{ios:true, android:false, pwa:false}, link:'https://vip.brz-domain.com' },
+  { id:'ps_1004', name:'Еженедельный напоминатель', type:'interval', weekday:'Пн', time:'00:05',
+    domain:'brz-domain.com', target:'domain', geo:'', on:true,
+    langs:{ru:{title:'Начни неделю с бонуса', msg:'Депозит сегодня — {удвоенный|повышенный} бонус'}, default:{title:'Start the week with a bonus', msg:'Deposit today for a bonus'}},
+    plats:{ios:true, android:true, pwa:true}, link:'' },
+  { id:'ps_1005', name:'Чёрная пятница — разовая', type:'onetime', date:'2026-11-27', time:'10:00',
+    domain:'Все домены', target:'domain', geo:'', on:false,
+    langs:{ru:{title:'Чёрная пятница 🔥', msg:'{Скидки|Бонусы} до {50%|100%} только сегодня'}, default:{title:'Black Friday 🔥', msg:'Deals up to 100% today only'}},
+    plats:{ios:true, android:true, pwa:true}, link:'' },
+];
+const EVENT_LABEL = {all:'Всем', install:'Install', reg:'Регистрация', dep:'Депозит', redep2:'Редепозит 2+'};
+</script>
+<script>
+/* ===================== САЙДБАР ===================== */
+function toggleSbGroup(g){
+  const items = document.getElementById('sb-'+g+'-items');
+  const chev = document.getElementById('sb-'+g+'-chev');
+  const open = items.style.display !== 'none';
+  items.style.display = open ? 'none' : 'flex';
+  chev.textContent = open ? '▾' : '▴';
+}
+function showView(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelectorAll('.sb-item[data-view]').forEach(x=>x.classList.toggle('active', x.dataset.view===v));
+  if (v==='pushes') renderPushList();
+  if (v==='audiences') renderAudiencesList();
+  if (v==='stats') renderStatsView();
+}
+
+/* ===================== СПИСОК ПУШЕЙ ===================== */
+let typeFilter = 'event';
+function setTypeFilter(t){
+  typeFilter = t;
+  document.querySelectorAll('#type-seg button').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
+  renderPushList();
+}
+function fmtCombos(p){
+  let total = 1;
+  Object.values(p.langs).forEach(l=>{ total *= (resolveSpintax((l.title||'')+' '+(l.msg||'')).combos || 1); });
+  return total;
+}
+function timeLabel(p){
+  if (p.type==='event') return `через ${p.delay} после «${EVENT_LABEL[p.event]}»`;
+  if (p.type==='interval') return `${(p.repeat||'Каждую неделю').toLowerCase()}, ${p.time}`;
+  return `${p.date} ${p.time}`;
+}
+function renderPushList(){
+  document.getElementById('st-total').textContent = pushes.length;
+  document.getElementById('st-active').textContent = pushes.filter(p=>p.on).length;
+  const list = pushes.filter(p=>p.type===typeFilter);
+  const typeLabel = {event:'Событийный', interval:'Интервальный', onetime:'Разовый'};
+  document.getElementById('push-tbody').innerHTML = list.length ? list.map(p=>{
+    const langs = Object.keys(p.langs).filter(k=>k!=='default').map(k=>k.toUpperCase()).join(', ') + (p.langs.default?' +фолбэк':'');
+    const audience = EVENT_LABEL[p.event] || 'Всем';
+    return `<tr class="clickable">
+      <td><div>${p.name}</div><div class="cell-sub">${p.id}</div></td>
+      <td><span class="pill indigo">${typeLabel[p.type]}</span></td>
+      <td>${audience}</td>
+      <td>${p.domain}<div class="cell-sub">${p.target==='naming'?'нейминг':'домен'}</div></td>
+      <td>${langs}</td>
+      <td>${timeLabel(p)}</td>
+      <td><span class="toggle ${p.on?'on':''}" onclick="p.on=!p.on; renderPushList()"></span></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="7"><div class="empty-state"><div class="big">🔕</div>Пушей типа «${typeLabel[typeFilter]}» пока нет<br><button class="btn primary sm" style="margin-top:14px" onclick="startCreate()">+ Создать</button></div></td></tr>`;
+}
+
+/* ===================== СТАТИСТИКА (мок-агрегация поверх того же датасета pushes) — по референсу PWApartners: один каталог полей на фильтры и группировку ===================== */
+function statsSeed(id){
+  let h = 0;
+  for (let i=0;i<id.length;i++) h = (h*31 + id.charCodeAt(i)) >>> 0;
+  return h;
+}
+const STATS_DAYS = ['08.09','07.09','06.09','05.09','04.09'];
+function genPushStats(p){
+  const seed = statsSeed(p.id);
+  const sent = 800 + (seed % 4000);
+  const delivered = Math.round(sent * (0.82 + (seed%15)/100));
+  const clicked = Math.round(delivered * (0.02 + (seed%9)/300));
+  const unsub = Math.round(delivered * ((seed%5)/1000));
+  const failed = sent - delivered;
+  const closed = Math.round(unsub * 0.4);
+  const regs = Math.round(clicked * (0.25 + (seed%20)/100));
+  const deps = Math.round(regs * (0.15 + (seed%15)/100));
+  const redeps = Math.round(deps * (0.20 + (seed%10)/100));
+  const launchDelay = seed % 45; // сек — наблюдаемость задержки отправка→доставка, DoD п.8
+  const day = STATS_DAYS[seed%5];
+  const launchTime = `${day} ${String(9+(seed%10)).padStart(2,'0')}:${String(seed%60).padStart(2,'0')}`;
+  return {sent, delivered, clicked, unsub, failed, closed, regs, deps, redeps, launchDelay, launchTime, day};
+}
+/* каталог метрик — тоже настраиваемый тегами, как у PWApartners (значок шестерёнки) */
+const METRICS_CATALOG = {
+  unsub:     {label:'Отменённых подписок', agg:'sum', key:'unsub'},
+  clicked:   {label:'Кликов', agg:'sum', key:'clicked'},
+  delivered: {label:'Получено', agg:'sum', key:'delivered'},
+  sent:      {label:'Успешно отправлено', agg:'sum', key:'sent'},
+  failed:    {label:'Не отправлено', agg:'sum', key:'failed'},
+  ctr:       {label:'CTR', agg:'ratio', calc:t=>t.delivered?(t.clicked/t.delivered*100):0},
+  total:     {label:'Всего сообщений', agg:'sum', key:'sent'},
+  closed:    {label:'Закрытых', agg:'sum', key:'closed'},
+  pctDelivered: {label:'% Получено', agg:'ratio', calc:t=>t.sent?(t.delivered/t.sent*100):0},
+  regs:      {label:'Реги', agg:'sum', key:'regs'},
+  deps:      {label:'Депы', agg:'sum', key:'deps'},
+  redeps:    {label:'Повторные депы (RD)', agg:'sum', key:'redeps'},
+  crReg:     {label:'CR% Клики/Реги', agg:'ratio', calc:t=>t.clicked?(t.regs/t.clicked*100):0},
+  crDep:     {label:'CR% Клики/Депы', agg:'ratio', calc:t=>t.clicked?(t.deps/t.clicked*100):0},
+  crRedep:   {label:'CR% Клики/Повторные депы (RD)', agg:'ratio', calc:t=>t.clicked?(t.redeps/t.clicked*100):0},
+};
+const STATS_SUM_KEYS = ['sent','delivered','clicked','unsub','failed','closed','regs','deps','redeps'];
+function metricValue(defKey, sums){
+  const def = METRICS_CATALOG[defKey];
+  const raw = def.agg==='sum' ? (sums[def.key]||0) : def.calc(sums);
+  return def.agg==='ratio' ? raw.toFixed(1)+'%' : raw.toLocaleString('ru-RU');
+}
+function pushRawTitle(p){
+  const l = p.langs?.default || Object.values(p.langs||{})[0] || {};
+  return (l.title||'').trim() || '(без заголовка)';
+}
+const TYPE_LABEL = {event:'Событийный', interval:'Интервальный', onetime:'Разовый'};
+/* единый каталог — используется и фильтрами, и группировкой, как у PWApartners */
+const STATS_FIELD_DEFS = {
+  name:    {label:'Пуш набор', type:'text'},
+  id:      {label:'Айди пуша', type:'text'},
+  domain:  {label:'Домен', type:'select', options: ()=>[...new Set(pushes.map(p=>p.domain))]},
+  event:   {label:'Аудитория', type:'select', options: ()=>Object.keys(EVENT_LABEL), optLabel:v=>EVENT_LABEL[v]},
+  type:    {label:'Тип пуша', type:'select', options: ()=>['event','interval','onetime'], optLabel:v=>TYPE_LABEL[v]},
+  title:   {label:'Заголовок', type:'text'},
+  content: {label:'Текст', type:'text'},
+  day:     {label:'День', type:'select', options: ()=>STATS_DAYS},
+  status:  {label:'Статус', type:'select', options: ()=>['on','off'], optLabel:v=>v==='on'?'Включен':'Выключен'},
+};
+function statsFieldValue(p, s, field){
+  switch(field){
+    case 'name': return p.name;
+    case 'id': return p.id;
+    case 'domain': return p.domain;
+    case 'event': return EVENT_LABEL[p.event] || 'Всем';
+    case 'type': return TYPE_LABEL[p.type];
+    case 'title': return pushRawTitle(p);
+    case 'content': return (p.langs?.default?.msg)||'';
+    case 'day': return s.day;
+    case 'status': return p.on?'Включен':'Выключен';
+    default: return '';
+  }
+}
+
+const STATS_TAB_DEFAULT_GROUP = {push:['name','domain','title'], domain:['domain'], day:['day']};
+let statsPreset = 'push';
+let statsGrouping = [...STATS_TAB_DEFAULT_GROUP.push];
+let statsFilters = [];
+let statsMetrics = ['sent','delivered','clicked','ctr','unsub'];
+let statsPeriod = 'all';
+let statsPanelOpen = null;
+
+function setStatsPreset(g){
+  statsPreset = g;
+  statsGrouping = [...STATS_TAB_DEFAULT_GROUP[g]];
+  document.querySelectorAll('#stats-group-seg button').forEach(b=>b.classList.toggle('active', b.dataset.g===g));
+  renderStatsView();
+}
+function setStatsPeriod(v){ statsPeriod = v; renderStatsView(); }
+function toggleStatsPanel(which){
+  statsPanelOpen = statsPanelOpen===which ? null : which;
+  document.getElementById('stats-group-panel').style.display = statsPanelOpen==='group' ? 'block' : 'none';
+  document.getElementById('stats-metrics-panel').style.display = statsPanelOpen==='metrics' ? 'block' : 'none';
+  document.getElementById('stats-filter-panel').style.display = statsPanelOpen==='filter' ? 'block' : 'none';
+  if (statsPanelOpen==='group') renderStatsGroupPanel();
+  if (statsPanelOpen==='metrics') renderStatsMetricsPanel();
+  if (statsPanelOpen==='filter') renderStatsFilterPanel();
+}
+function renderStatsMetricsPanel(){
+  document.getElementById('stats-metrics-selected').innerHTML = statsMetrics.length ? statsMetrics.map(m=>`
+    <span class="pill indigo" style="display:inline-flex; align-items:center; gap:6px; margin:0 6px 6px 0">
+      ${METRICS_CATALOG[m].label}
+      <span onclick="removeStatsMetric('${m}')" style="cursor:pointer; font-weight:800">×</span>
+    </span>`).join('') : `<span class="cell-sub">Ничего не выбрано.</span>`;
+  const available = Object.keys(METRICS_CATALOG).filter(m=>!statsMetrics.includes(m));
+  document.getElementById('stats-metrics-available').innerHTML = available.map(m=>`<button class="chip" onclick="addStatsMetric('${m}')">+ ${METRICS_CATALOG[m].label}</button>`).join('') || `<span class="cell-sub">Все метрики уже добавлены</span>`;
+}
+function addStatsMetric(m){ statsMetrics.push(m); renderStatsMetricsPanel(); renderStatsView(); }
+function removeStatsMetric(m){ statsMetrics = statsMetrics.filter(x=>x!==m); renderStatsMetricsPanel(); renderStatsView(); }
+function renderStatsGroupPanel(){
+  document.getElementById('stats-group-selected').innerHTML = statsGrouping.length ? statsGrouping.map((f,i)=>`
+    <span class="pill indigo" style="display:inline-flex; align-items:center; gap:6px; margin:0 6px 6px 0">
+      ${STATS_FIELD_DEFS[f].label}
+      <span onclick="moveStatsGroup(${i},-1)" style="cursor:pointer; ${i===0?'opacity:.3':''}">↑</span>
+      <span onclick="moveStatsGroup(${i},1)" style="cursor:pointer; ${i===statsGrouping.length-1?'opacity:.3':''}">↓</span>
+      <span onclick="removeStatsGroup('${f}')" style="cursor:pointer; font-weight:800">×</span>
+    </span>`).join('') : `<span class="cell-sub">Ничего не выбрано — таблица покажет только метрики.</span>`;
+  const available = Object.keys(STATS_FIELD_DEFS).filter(f=>!statsGrouping.includes(f));
+  document.getElementById('stats-group-available').innerHTML = available.map(f=>`<button class="chip" onclick="addStatsGroup('${f}')">+ ${STATS_FIELD_DEFS[f].label}</button>`).join('') || `<span class="cell-sub">Все поля уже добавлены</span>`;
+}
+function addStatsGroup(f){ statsGrouping.push(f); renderStatsGroupPanel(); renderStatsView(); }
+function removeStatsGroup(f){ statsGrouping = statsGrouping.filter(x=>x!==f); renderStatsGroupPanel(); renderStatsView(); }
+function moveStatsGroup(i, dir){
+  const j = i+dir;
+  if (j<0 || j>=statsGrouping.length) return;
+  [statsGrouping[i], statsGrouping[j]] = [statsGrouping[j], statsGrouping[i]];
+  renderStatsGroupPanel(); renderStatsView();
+}
+function renderStatsFilterPanel(){
+  document.getElementById('stats-filter-rows').innerHTML = statsFilters.length ? statsFilters.map((f,i)=>{
+    const def = STATS_FIELD_DEFS[f.field];
+    const valueField = def.type==='select'
+      ? `<select onchange="updStatsFilter(${i},'val',this.value)" style="flex:1">${def.options().map(o=>`<option value="${o}" ${f.val===o?'selected':''}>${def.optLabel?def.optLabel(o):o}</option>`).join('')}</select>`
+      : `<input type="text" placeholder="значение" value="${escHtml(f.val||'')}" oninput="updStatsFilter(${i},'val',this.value)" style="flex:1">`;
+    return `<div class="cond">
+      <select onchange="updStatsFilter(${i},'field',this.value)">${Object.entries(STATS_FIELD_DEFS).map(([k,d])=>`<option value="${k}" ${f.field===k?'selected':''}>${d.label}</option>`).join('')}</select>
+      ${valueField}
+      <span class="rm" onclick="rmStatsFilter(${i})">×</span>
+    </div>`;
+  }).join('') : `<div class="cell-sub" style="padding:6px 0">Фильтров нет — показаны все данные.</div>`;
+}
+function addStatsFilter(){
+  statsFilters.push({field:'domain', val: STATS_FIELD_DEFS.domain.options()[0]||''});
+  renderStatsFilterPanel();
+  renderStatsView();
+}
+function rmStatsFilter(i){ statsFilters.splice(i,1); renderStatsFilterPanel(); renderStatsView(); }
+function updStatsFilter(i, key, val){
+  if (key==='field'){
+    const def = STATS_FIELD_DEFS[val];
+    statsFilters[i] = {field:val, val: def.type==='select' ? (def.options()[0]||'') : ''};
+    renderStatsFilterPanel();
+  } else {
+    statsFilters[i].val = val;
+  }
+  renderStatsView();
+}
+function resetStatsFilters(){ statsFilters = []; renderStatsFilterPanel(); renderStatsView(); }
+function statsMatchesFilters(p,s){
+  return statsFilters.every(f=>{
+    if (!f.val) return true;
+    const v = String(statsFieldValue(p,s,f.field)).toLowerCase();
+    return v.includes(String(f.val).toLowerCase());
+  });
+}
+function statsMatchesPeriod(s){
+  if (statsPeriod==='all' || statsPeriod==='7d') return true;
+  if (statsPeriod==='today') return s.day===STATS_DAYS[0];
+  if (statsPeriod==='yesterday') return s.day===STATS_DAYS[1];
+  if (statsPeriod==='daybefore') return s.day===STATS_DAYS[2];
+  return true;
+}
+function renderStatsView(){
+  document.getElementById('stats-group-count').textContent = statsGrouping.length;
+  document.getElementById('stats-metrics-count').textContent = statsMetrics.length;
+  document.getElementById('stats-filter-count').textContent = statsFilters.length;
+
+  const rows = pushes
+    .map(p=>({p, s: genPushStats(p)}))
+    .filter(({p,s})=>statsMatchesFilters(p,s) && statsMatchesPeriod(s));
+
+  const totals = rows.reduce((acc,r)=>{
+    STATS_SUM_KEYS.forEach(k=>acc[k]+=r.s[k]);
+    return acc;
+  }, Object.fromEntries(STATS_SUM_KEYS.map(k=>[k,0])));
+  const ctrTotal = totals.delivered ? (totals.clicked/totals.delivered*100) : 0;
+  document.getElementById('stats-cards').innerHTML = `
+    <div class="stat"><div class="stat-label">Отправлено</div><div class="stat-value">${totals.sent.toLocaleString('ru-RU')}</div></div>
+    <div class="stat"><div class="stat-label">Доставлено</div><div class="stat-value">${totals.delivered.toLocaleString('ru-RU')}</div></div>
+    <div class="stat"><div class="stat-label">Кликнуто</div><div class="stat-value">${totals.clicked.toLocaleString('ru-RU')}</div></div>
+    <div class="stat"><div class="stat-label">CTR</div><div class="stat-value">${ctrTotal.toFixed(1)}%</div></div>
+    <div class="stat"><div class="stat-label">Отписки</div><div class="stat-value">${totals.unsub.toLocaleString('ru-RU')}</div></div>
+  `;
+
+  const metricLabels = statsMetrics.map(m=>METRICS_CATALOG[m].label);
+  document.getElementById('stats-thead-row').innerHTML =
+    statsGrouping.map(f=>`<th>${STATS_FIELD_DEFS[f].label}</th>`).join('') +
+    metricLabels.map(c=>`<th>${c}</th>`).join('');
+  const totalCols = statsGrouping.length + statsMetrics.length;
+
+  if (!statsGrouping.length){
+    document.getElementById('stats-tbody').innerHTML = rows.length
+      ? `<tr>${statsMetrics.map(m=>`<td>${metricValue(m, totals)}</td>`).join('')}</tr>`
+      : `<tr><td colspan="${totalCols||1}"><div class="empty-state">Нет данных</div></td></tr>`;
+    return;
+  }
+
+  const groups = {};
+  rows.forEach(({p,s})=>{
+    const key = statsGrouping.map(f=>statsFieldValue(p,s,f)).join(' / ');
+    if (!groups[key]) groups[key] = {dims: statsGrouping.map(f=>statsFieldValue(p,s,f)), sums: Object.fromEntries(STATS_SUM_KEYS.map(k=>[k,0]))};
+    STATS_SUM_KEYS.forEach(k=>groups[key].sums[k]+=s[k]);
+  });
+  const groupRows = Object.values(groups);
+  document.getElementById('stats-tbody').innerHTML = groupRows.length ? groupRows.map(g=>{
+    return `<tr>${g.dims.map(d=>`<td>${escHtml(String(d))}</td>`).join('')}${statsMetrics.map(m=>`<td>${metricValue(m, g.sums)}</td>`).join('')}</tr>`;
+  }).join('') : `<tr><td colspan="${totalCols}"><div class="empty-state">Нет данных за выбранный период/фильтры</div></td></tr>`;
+}
+
+/* ===================== МОДАЛКА ВЫБОРА СОЗДАНИЯ ===================== */
+/* ===================== СОЗДАНИЕ ПУША — ДРАФТ ===================== */
+let draft = {};
+let chainMode = 'text';
+let chainSteps = ['5m','1h','1d'];
+let curPreviewPlat = 'ios';
+let curPreviewScope = 'b0';
+let curPreviewLang = 'default';
+const BRANCH_EVENTS = [['install','Инсталл'],['reg','Регистрация'],['dep','Депозит'],['redep2','Редепозит 2+']];
+const AUDIENCE_OPTIONS = [['all','Всем'], ...BRANCH_EVENTS];
+
+function resetDraft(){
+  draft = {
+    packName: '',
+    type:'event', target:'domain', audienceId:null,
+    branches:[makeBranch('event')],
+    banner:false,
+  };
+  chainMode = 'text';
+  chainSteps = ['5m','1h','1d'];
+  curPreviewScope = 'b0';
+  curPreviewLang = 'default';
+}
+function onPackNameEdit(val){
+  draft.packName = val;
+  if (val.trim()) document.getElementById('pack-name-error').style.display = 'none';
+}
+
+/* ---- тип пуша ---- */
+function setCreateType(t){
+  draft.type = t;
+  document.querySelectorAll('#ctype-seg button').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
+  document.getElementById('fs5-wrap').style.display = t==='event' ? '' : 'none';
+  if (t==='event') renderStep5();
+  updateGeoVisibility();
+  draft.branches = [makeBranch(t)];
+  updateBranchesHeader();
+  renderBranches();
+  setPreviewScope('b0','default');
+}
+function jumpTo(g){
+  document.getElementById('fg-'+g).scrollIntoView({behavior:'smooth', block:'start'});
+  document.querySelectorAll('.rail-item').forEach(r=>r.classList.toggle('active', r.dataset.g===g));
+}
+
+/* ---- домен / нейминг / аудитория ---- */
+function setTargetMode(v){
+  draft.target = v;
+  document.querySelectorAll('#target-seg button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
+  const body = document.getElementById('target-body');
+  if (v==='audience'){
+    body.innerHTML = audiences.length ? `
+      <select id="target-audience-select" onchange="draft.audienceId=this.value">
+        ${audiences.map(a=>`<option value="${a.id}">${a.name} — ${a.reach.toLocaleString('ru-RU')}</option>`).join('')}
+      </select>
+      <div class="cell-sub" style="margin-top:8px"><a href="#" onclick="showView('audiences'); return false;" style="color:var(--accent-text)">Управлять аудиториями →</a></div>`
+      : `<div class="cell-sub">Сохранённых аудиторий пока нет. <a href="#" onclick="showView('audiences'); return false;" style="color:var(--accent-text)">Создать аудиторию →</a></div>`;
+    if (audiences.length) draft.audienceId = audiences[0].id;
+  } else {
+    const label = v==='naming' ? 'Нейминг' : 'Домен';
+    body.innerHTML = `
+      <div class="banner new">🆕 Доступно создание пушей на In-app трафик по неймингу.</div>
+      <div class="grid-2">
+        ${renderMsel('domain', label)}
+        ${renderMsel('app', 'Приложения')}
+      </div>`;
+    mselOpen.domain = false; mselOpen.app = false;
+  }
+  updateGeoVisibility();
+}
+/* домен и нейминг — раздельные цели по ТЗ, поэтому у каждого режима свой список */
+let targetLists = {
+  domain:{domain:['brz-domain.com'], app:[]},
+  naming:{domain:[], app:[]},
+};
+const DOMAIN_CATALOG = ['brz-domain.com','gm96.top','brz-domain2.com','wwa-top.com'];
+const NAMING_CATALOG = ['gm96','gm96-alt','tz53','plinko-za'];
+const APP_CATALOG = [
+  {name:'Cricket Stumpora'}, {name:'Evolution Sprout', url:true}, {name:'LinkPlay', url:true},
+  {name:'Frog Radar', url:true}, {name:'TerraCycle', url:true}, {name:'Footvibe', url:true},
+  {name:'Penaly Evidexis', url:true}, {name:'Volcaryn', url:true},
+];
+const GEO_CATALOG = ['UA','KZ','BR','IN','PH','UZ','RU','TR','MX','ID','VN','EG','NG','PK','BD'];
+let selectedGeo = [];
+let mselOpen = {domain:false, app:false, geo:false};
+let mselFilter = {domain:'', app:'', geo:''};
+function getMselList(kind){
+  return kind==='geo' ? selectedGeo : targetLists[draft.target][kind];
+}
+function getCatalogNorm(kind){
+  if (kind==='app') return APP_CATALOG;
+  if (kind==='geo') return GEO_CATALOG.map(n=>({name:n}));
+  return (draft.target==='naming' ? NAMING_CATALOG : DOMAIN_CATALOG).map(n=>({name:n}));
+}
+function mselFullList(kind){
+  const selected = getMselList(kind);
+  const catalog = getCatalogNorm(kind);
+  const names = catalog.map(c=>c.name);
+  const extra = selected.filter(s=>!names.includes(s)).map(s=>({name:s}));
+  return [...catalog, ...extra];
+}
+function renderMsel(kind, label){
+  const selected = getMselList(kind);
+  return `<div class="msel" id="msel-${kind}">
+    <div class="msel-header" onclick="toggleMsel('${kind}')">
+      <span class="msel-label">${label}</span>
+      <span class="msel-summary" id="msel-${kind}-summary">Выбрано: ${selected.length}</span>
+      <span class="msel-chevron">⌄</span>
+    </div>
+    <div class="msel-panel" id="msel-${kind}-panel" style="display:none">
+      <input type="text" class="msel-search" placeholder="${label}" onclick="event.stopPropagation()" oninput="filterMsel('${kind}', this.value)" onkeydown="mselSearchKeydown(event,'${kind}')">
+      <div class="msel-selectall" id="msel-${kind}-selectall" onclick="event.stopPropagation(); mselToggleAllVisible('${kind}')">Выбрать все</div>
+      <div class="msel-list" id="msel-${kind}-list"></div>
+    </div>
+  </div>`;
+}
+function mselVisibleItems(kind){
+  const filter = (mselFilter[kind]||'').toLowerCase();
+  const full = mselFullList(kind);
+  return filter ? full.filter(it=>it.name.toLowerCase().includes(filter)) : full;
+}
+function renderMselRows(kind){
+  const selected = getMselList(kind);
+  const visible = mselVisibleItems(kind);
+  if (!visible.length) return `<div class="cell-sub" style="padding:8px 4px">Ничего не найдено — нажмите Enter в поиске, чтобы добавить как новое значение.</div>`;
+  return visible.map(it=>{
+    const checked = selected.includes(it.name);
+    return `<label class="msel-row" onclick="event.stopPropagation()">
+      <input type="checkbox" ${checked?'checked':''} onchange="toggleMselItem('${kind}','${it.name.replace(/'/g,"\\'")}')">
+      <span>${escHtml(it.name)}</span>
+      ${it.url ? `<span class="msel-badge">URL</span>` : ''}
+    </label>`;
+  }).join('');
+}
+function updateSelectAllLabel(kind){
+  const btn = document.getElementById('msel-'+kind+'-selectall');
+  if (!btn) return;
+  const visible = mselVisibleItems(kind);
+  const list = getMselList(kind);
+  const allSelected = visible.length>0 && visible.every(it=>list.includes(it.name));
+  btn.textContent = allSelected ? 'Снять все' : 'Выбрать все';
+}
+function closeMsel(kind){
+  mselOpen[kind] = false;
+  const wrap = document.getElementById('msel-'+kind);
+  const panel = document.getElementById('msel-'+kind+'-panel');
+  if (wrap) wrap.classList.remove('open');
+  if (panel) panel.style.display = 'none';
+}
+function toggleMsel(kind){
+  const opening = !mselOpen[kind];
+  if (opening){
+    /* панели не должны перекрывать друг друга — открываем только одну одновременно */
+    ['domain','app','geo'].forEach(k=>{ if (k!==kind && mselOpen[k]) closeMsel(k); });
+  }
+  mselOpen[kind] = opening;
+  const wrap = document.getElementById('msel-'+kind);
+  const panel = document.getElementById('msel-'+kind+'-panel');
+  if (!wrap || !panel) return;
+  wrap.classList.toggle('open', opening);
+  panel.style.display = opening ? 'flex' : 'none';
+  if (opening){
+    mselFilter[kind] = '';
+    document.getElementById('msel-'+kind+'-list').innerHTML = renderMselRows(kind);
+    updateSelectAllLabel(kind);
+  }
+}
+function filterMsel(kind, val){
+  mselFilter[kind] = val;
+  document.getElementById('msel-'+kind+'-list').innerHTML = renderMselRows(kind);
+  updateSelectAllLabel(kind);
+}
+function toggleMselItem(kind, name){
+  const list = getMselList(kind);
+  const idx = list.indexOf(name);
+  if (idx>=0) list.splice(idx,1); else list.push(name);
+  updateMselSummary(kind);
+  updateSelectAllLabel(kind);
+}
+function updateMselSummary(kind){
+  const el = document.getElementById('msel-'+kind+'-summary');
+  if (el) el.textContent = 'Выбрано: ' + getMselList(kind).length;
+}
+function mselSearchKeydown(e, kind){
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const items = e.target.value.split(/[,;\n]+/).map(s=>s.trim()).filter(Boolean);
+  if (!items.length) return;
+  const list = getMselList(kind);
+  items.forEach(it=>{ if (!list.includes(it)) list.push(it); });
+  mselFilter[kind] = '';
+  e.target.value = '';
+  document.getElementById('msel-'+kind+'-list').innerHTML = renderMselRows(kind);
+  updateMselSummary(kind);
+  updateSelectAllLabel(kind);
+}
+function mselToggleAllVisible(kind){
+  const visible = mselVisibleItems(kind);
+  const list = getMselList(kind);
+  const allSelected = visible.length>0 && visible.every(it=>list.includes(it.name));
+  if (allSelected){
+    visible.forEach(it=>{ const idx=list.indexOf(it.name); if (idx>=0) list.splice(idx,1); });
+  } else {
+    visible.forEach(it=>{ if (!list.includes(it.name)) list.push(it.name); });
+  }
+  document.getElementById('msel-'+kind+'-list').innerHTML = renderMselRows(kind);
+  updateMselSummary(kind);
+  updateSelectAllLabel(kind);
+}
+function updateGeoVisibility(){
+  const el = document.getElementById('fsub-geo');
+  if (!el) return;
+  el.style.display = (draft.target!=='audience') ? '' : 'none';
+}
+
+/* ---- тайминг: общий на пак только для событийного типа (цепочка повторов) ---- */
+/* интервальные и разовые получают тайминг per-ветка ниже, в дереве веток */
+function renderStep5(){
+  if (draft.type!=='event') return;
+  const body = document.getElementById('fs5-body');
+  document.getElementById('fs5-label').textContent = 'Цепочка повторов';
+  body.innerHTML = `
+    <label class="fl">Время повторных пушей</label>
+    <div class="seg chain-mode-seg" id="chain-mode-seg">
+      <button class="active" data-m="text" onclick="setChainMode('text')">Строкой</button>
+      <button data-m="manual" onclick="setChainMode('manual')">По шагам</button>
+    </div>
+    <div id="chain-body"></div>
+    <div class="cell-sub" style="margin-top:8px">Первый шаг — задержка после самого события. Каждый следующий считается от предыдущего отправленного пуша. По достижении конца — зацикливается на последнем шаге бесконечно. Общая цепочка одна на весь пак, независимо от того, сколько в нём веток событий.</div>`;
+  renderChainBody();
+}
+function setChainMode(m){
+  chainMode = m;
+  document.querySelectorAll('#chain-mode-seg button').forEach(b=>b.classList.toggle('active', b.dataset.m===m));
+  renderChainBody();
+}
+function renderChainBody(){
+  const el = document.getElementById('chain-body');
+  if (!el) return;
+  if (chainMode==='text'){
+    el.innerHTML = `<input type="text" class="mono" id="chain-text" value="${chainSteps.join(',')}" oninput="onChainTextEdit(this.value)" placeholder="5m,1h,1d">`;
+  } else {
+    el.innerHTML = `<div class="steps-row" id="chain-steps-row"></div><button class="btn sm" style="margin-top:10px" onclick="addChainStep()">+ Шаг</button>`;
+    renderChainSteps();
+  }
+}
+function onChainTextEdit(v){ chainSteps = v.split(/[|,\/]/).map(s=>s.trim()).filter(s=>/^\d+[mhd]$/.test(s)); }
+function renderChainSteps(){
+  const row = document.getElementById('chain-steps-row');
+  if (!row) return;
+  row.innerHTML = chainSteps.map((s,i)=>{
+    const num = s.match(/\d+/)?.[0]||'5'; const unit = s.match(/[mhd]/)?.[0]||'m';
+    return `<div class="step-chip">
+      <input type="text" value="${num}" oninput="chainSteps[${i}]=this.value+'${unit}'">
+      <select onchange="chainSteps[${i}]='${num}'+this.value">
+        <option value="m" ${unit==='m'?'selected':''}>мин</option><option value="h" ${unit==='h'?'selected':''}>час</option><option value="d" ${unit==='d'?'selected':''}>дн</option>
+      </select>
+      <span class="rm" onclick="chainSteps.splice(${i},1); renderChainSteps()">×</span>
+    </div>`;
+  }).join('') + `<div class="pill grey">∞ повтор последнего</div>`;
+}
+function addChainStep(){ chainSteps.push('1h'); renderChainSteps(); }
+
+/* ---- ветки по событию воронки (только событийный тип) ---- */
+const WEEKDAYS = [['mon','пн'],['tue','вт'],['wed','ср'],['thu','чт'],['fri','пт'],['sat','сб'],['sun','вс']];
+function makeBranch(type){
+  const langs = {default:{title:'', msg:''}};
+  if (type==='interval') return {date:'', time:'00:05', enddate:'', repeat:'Каждую неделю', audience:'all', weekdays:[], langs};
+  if (type==='onetime') return {date:'', time:'10:00', audience:'all', weekdays:[], langs};
+  return {event:'install', langs};
+}
+function usedEvents(excludeIdx){ return draft.branches.filter((b,i)=>i!==excludeIdx).map(b=>b.event); }
+function toggleBranchWeekday(bi, day){
+  const b = draft.branches[bi];
+  if (!b.weekdays) b.weekdays = [];
+  const idx = b.weekdays.indexOf(day);
+  if (idx>=0) b.weekdays.splice(idx,1); else b.weekdays.push(day);
+  renderBranches();
+}
+function setAllWeekdays(bi, all){
+  draft.branches[bi].weekdays = all ? WEEKDAYS.map(([k])=>k) : [];
+  renderBranches();
+}
+function renderWeekdayPicker(b, bi){
+  const cur = b.weekdays || [];
+  const allSelected = cur.length === WEEKDAYS.length;
+  const chips = WEEKDAYS.map(([k,l])=>`<button class="chip ${cur.includes(k)?'active':''}" style="min-width:38px; text-align:center" onclick="toggleBranchWeekday(${bi},'${k}')">${l}</button>`).join('');
+  return `<div class="fsub-label" style="margin-bottom:8px">Дни недели (опционально)<button class="btn sm ghost" style="margin-left:8px; padding:2px 8px" onclick="setAllWeekdays(${bi},${!allSelected})">${allSelected ? 'Снять все' : 'Выбрать все'}</button></div><div class="chip-row">${chips}</div><div class="cell-sub" style="margin-top:6px">Дата начала и дни недели — взаимозаменяемые способы задать расписание: не выбрали дни — сработает дата начала.</div>`;
+}
+function updateBranchesHeader(){
+  const t = draft.type;
+  const label = document.getElementById('branches-fsub-label');
+  const hint = document.getElementById('branches-hint');
+  const addBtn = document.getElementById('add-branch-btn');
+  if (!label) return;
+  if (t==='event'){
+    label.textContent = 'Ветки по событию воронки';
+    hint.textContent = 'Каждая ветка — своё событие и свои тексты. Текст, написанный в Install, не попадает в Регистрацию и т.д. Гео и таргет общие на весь пак — заданы выше в «Кому».';
+    addBtn.textContent = '+ Добавить событие';
+  } else if (t==='interval'){
+    label.textContent = 'Ветки по расписанию';
+    hint.textContent = 'Каждая ветка — своё расписание и свои тексты, независимо от остальных веток. Гео и таргет общие на весь пак — заданы выше в «Кому».';
+    addBtn.textContent = '+ Добавить расписание';
+  } else {
+    label.textContent = 'Ветки по дате отправки';
+    hint.textContent = 'Каждая ветка — своя дата и время, и свои тексты, независимо от остальных веток. Гео и таргет общие на весь пак — заданы выше в «Кому».';
+    addBtn.textContent = '+ Добавить дату';
+  }
+}
+function renderBranchMetaFields(b, bi, t){
+  if (t==='interval'){
+    const isRecurring = (b.repeat||'Каждую неделю') !== 'Разовая отправка';
+    const noEnd = isRecurring && !b.enddate;
+    return `<div class="grid-2" style="margin-bottom:${noEnd?'6px':'14px'}">
+      <div class="field"><label class="fl">Дата начала</label><input type="date" value="${b.date||''}" oninput="setBranchMeta(${bi},'date',this.value)"></div>
+      <div class="field"><label class="fl">Время</label><input type="time" value="${b.time||'00:05'}" oninput="setBranchMeta(${bi},'time',this.value)"></div>
+      <div class="field"><label class="fl">Повтор</label><select onchange="setBranchMeta(${bi},'repeat',this.value)">
+        <option ${b.repeat==='Каждый день'?'selected':''}>Каждый день</option>
+        <option ${(!b.repeat || b.repeat==='Каждую неделю')?'selected':''}>Каждую неделю</option>
+        <option ${b.repeat==='Разовая отправка'?'selected':''}>Разовая отправка</option>
+      </select></div>
+      ${isRecurring ? `<div class="field"><label class="fl">Дата окончания</label><input type="date" placeholder="бессрочно" value="${b.enddate||''}" oninput="setBranchMeta(${bi},'enddate',this.value)"></div>` : ''}
+    </div>
+    ${noEnd ? `<div class="banner note" style="margin-bottom:14px">Дата окончания не указана — будет отправляться ${b.repeat==='Каждый день'?'каждый день':'каждую неделю'} до ручной остановки.</div>` : ''}
+    <div style="margin-bottom:14px">${renderWeekdayPicker(b, bi)}</div>`;
+  }
+  if (t==='onetime'){
+    return `<div class="grid-2" style="margin-bottom:14px">
+      <div class="field"><label class="fl">Дата отправки</label><input type="date" value="${b.date||''}" oninput="setBranchMeta(${bi},'date',this.value)"></div>
+      <div class="field"><label class="fl">Время</label><input type="time" value="${b.time||'10:00'}" oninput="setBranchMeta(${bi},'time',this.value)"></div>
+    </div>
+    <div style="margin-bottom:14px">${renderWeekdayPicker(b, bi)}</div>`;
+  }
+  return '';
+}
+function renderBranches(){
+  const wrap = document.getElementById('branches-list');
+  const t = draft.type;
+  if (!draft.branches.length){
+    wrap.innerHTML = `<div class="cell-sub" style="padding:10px 0 16px">Веток пока нет — добавьте хотя бы одну.</div>`;
+  } else {
+    wrap.innerHTML = draft.branches.map((b,bi)=>{
+      let headTitle, headExtra = '';
+      const selectStyle = 'width:auto; padding:6px 9px; font-size:12.5px; font-weight:650; border-radius:7px; border:1px solid var(--border-2); background:var(--surface)';
+      if (t==='event'){
+        const used = usedEvents(bi);
+        const opts = BRANCH_EVENTS.map(([k,l])=>`<option value="${k}" ${b.event===k?'selected':''} ${used.includes(k)?'disabled':''}>${l}</option>`).join('');
+        headTitle = `<span class="grp-title">Событие</span><select onchange="setBranchMeta(${bi},'event',this.value)" style="${selectStyle}">${opts}</select>`;
+        if (b.event==='redep2') headExtra = '<span class="needs-decision" style="margin-left:2px">нужен постбэк на редеп</span>';
+      } else {
+        const opts = AUDIENCE_OPTIONS.map(([k,l])=>`<option value="${k}" ${(b.audience||'all')===k?'selected':''}>${l}</option>`).join('');
+        headTitle = `<span class="grp-title">Аудитория</span><select onchange="setBranchMeta(${bi},'audience',this.value)" style="${selectStyle}">${opts}</select>`;
+        if ((b.audience||'all')==='redep2') headExtra = '<span class="needs-decision" style="margin-left:2px">нужен постбэк на редеп</span>';
+      }
+      const metaFields = renderBranchMetaFields(b, bi, t);
+      return `<div class="grp" style="padding:16px 16px 18px; margin-bottom:14px">
+        <div class="grp-head">
+          ${headTitle}${headExtra}
+          <span style="flex:1"></span>
+          <span onclick="removeBranch(${bi})" style="cursor:pointer; color:var(--text-3); font-size:16px; padding:0 4px">×</span>
+        </div>
+        ${metaFields ? `<div style="margin-top:14px">${metaFields}</div>` : ''}
+        <div class="fsub-label" style="margin-top:14px; margin-bottom:8px">Тексты</div>
+        <div id="lang-blocks-b${bi}"></div>
+        <div class="dd-wrap" style="position:relative; display:inline-block; margin-top:2px">
+          <button class="btn sm" onclick="toggleAddLangMenu('b${bi}')">+ Добавить язык</button>
+          <div id="add-lang-menu-b${bi}" style="display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:20; min-width:160px; background:var(--surface); border:1px solid var(--border-2); border-radius:10px; box-shadow:var(--shadow-md); padding:6px;"></div>
+        </div>
+      </div>`;
+    }).join('');
+    draft.branches.forEach((b,bi)=>renderLangBlocksFor('b'+bi, 'lang-blocks-b'+bi));
+  }
+  const addBtn = document.getElementById('add-branch-btn');
+  if (addBtn) addBtn.style.display = (t==='event' && draft.branches.length>=BRANCH_EVENTS.length) ? 'none' : '';
+  const filled = draft.branches.some(b=>Object.values(b.langs).some(l=>l.title||l.msg));
+  document.getElementById('rail-dot-what').classList.toggle('filled', filled);
+}
+function setBranchMeta(bi, field, val){
+  draft.branches[bi][field] = val;
+  if (field==='event' || field==='audience' || field==='repeat') renderBranches();
+}
+function addBranch(){
+  if (draft.type==='event'){
+    const used = draft.branches.map(b=>b.event);
+    const next = BRANCH_EVENTS.find(([k])=>!used.includes(k));
+    if (!next) return;
+    draft.branches.push(makeBranch('event'));
+    draft.branches[draft.branches.length-1].event = next[0];
+  } else {
+    draft.branches.push(makeBranch(draft.type));
+  }
+  renderBranches();
+}
+function removeBranch(bi){
+  const scope = 'b'+bi;
+  draft.branches.splice(bi,1);
+  if (curPreviewScope===scope && draft.branches.length) setPreviewScope('b0', 'default');
+  renderBranches();
+}
+
+/* ---- языки: независимые блоки, общая функция для пака и для веток ---- */
+function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function getLangsObj(scope){
+  const idx = Number(scope.slice(1));
+  return draft.branches[idx] ? draft.branches[idx].langs : null;
+}
+function renderLangBlocksFor(scope, containerId){
+  const langs = getLangsObj(scope);
+  const container = document.getElementById(containerId);
+  if (!langs || !container) return;
+  const codes = Object.keys(langs);
+  container.innerHTML = codes.map(code=>{
+    const meta = LANGS.find(l=>l.code===code) || {name:code};
+    const isDefault = code==='default';
+    const l = langs[code];
+    return `<div class="card" style="margin-bottom:10px; padding:12px 14px">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px">
+        <b style="font-size:12.5px">${isDefault ? 'Глобально' : meta.name}</b>
+        ${isDefault ? `<span class="cell-sub">для всех без своего языка</span>` : ''}
+        <span style="flex:1"></span>
+        <button class="btn sm ghost" onclick="setPreviewScope('${scope}','${code}')">👁 В превью</button>
+        ${isDefault ? '' : `<button class="btn sm ghost" onclick="openTranslateModal('${scope}','${code}')">🌐 Перевести</button>`}
+        ${isDefault ? '' : `<span onclick="removeLangBlock('${scope}','${code}')" style="cursor:pointer; color:var(--text-3); font-size:16px; padding:0 4px">×</span>`}
+      </div>
+      <div class="field"><label class="fl">Заголовок</label><input type="text" class="mono" value="${escHtml(l.title)}" oninput="onLangEdit('${scope}','${code}','title',this.value)" ${meta.rtl?'dir="rtl"':''}></div>
+      <div class="field"><label class="fl">Текст</label><textarea rows="2" class="mono" oninput="onLangEdit('${scope}','${code}','msg',this.value)" ${meta.rtl?'dir="rtl"':''}>${escHtml(l.msg)}</textarea></div>
+      <div class="spin-meta" id="spinmeta-${scope}-${code}"></div>
+    </div>`;
+  }).join('');
+  codes.forEach(code=>updateBlockSpinMeta(scope, code));
+}
+function onLangEdit(scope, code, field, val){
+  const langs = getLangsObj(scope);
+  if (!langs) return;
+  if (!langs[code]) langs[code] = {};
+  langs[code][field] = val;
+  if (val) document.getElementById('rail-dot-what').classList.add('filled');
+  updateBlockSpinMeta(scope, code);
+  if (curPreviewScope===scope && curPreviewLang===code) renderCPreview();
+}
+function updateBlockSpinMeta(scope, code){
+  const langs = getLangsObj(scope); if (!langs) return;
+  const l = langs[code] || {};
+  const r = resolveSpintax((l.title||'')+'  '+(l.msg||''));
+  const bad = [];
+  if (tokenizeSpintax(l.title||'').malformed) bad.push('заголовок');
+  if (tokenizeSpintax(l.msg||'').malformed) bad.push('сообщение');
+  const el = document.getElementById('spinmeta-'+scope+'-'+code);
+  if (!el) return;
+  el.innerHTML = `<span>Комбинаций: <b>${r.combos}</b></span>` + (bad.length ? `<span class="spin-bad">⚠ незакрытая скобка: ${bad.join(', ')}</span>` : `<span style="color:var(--green)">синтаксис ок</span>`);
+}
+function toggleAddLangMenu(scope){
+  const menu = document.getElementById('add-lang-menu-'+scope);
+  const langs = getLangsObj(scope);
+  if (!menu || !langs) return;
+  const show = menu.style.display==='none';
+  if (show){
+    const avail = LANGS.filter(l=>l.code!=='default' && !langs[l.code]);
+    menu.innerHTML = avail.length ? avail.map(l=>`<div class="dd-option" onclick="addLangBlock('${scope}','${l.code}')" style="padding:7px 9px; border-radius:6px; cursor:pointer; font-size:12.5px; font-weight:600; color:var(--text-2)">${l.name}</div>`).join('') : `<div class="cell-sub" style="padding:6px 9px">Все языки уже добавлены</div>`;
+  }
+  menu.style.display = show ? 'block' : 'none';
+}
+function addLangBlock(scope, code){
+  const langs = getLangsObj(scope);
+  langs[code] = {title:'', msg:''};
+  document.getElementById('add-lang-menu-'+scope).style.display = 'none';
+  renderLangBlocksFor(scope, 'lang-blocks-'+scope);
+}
+function removeLangBlock(scope, code){
+  const langs = getLangsObj(scope);
+  delete langs[code];
+  if (curPreviewScope===scope && curPreviewLang===code) curPreviewLang = 'default';
+  renderLangBlocksFor(scope, 'lang-blocks-'+scope);
+  renderCPreview();
+}
+
+/* ---- перевод (UI-заглушка — алгоритм пишет команда отдельно) ---- */
+let translateTarget = null;
+function openTranslateModal(scope, code){
+  translateTarget = {scope, code};
+  const langs = getLangsObj(scope);
+  const sources = Object.keys(langs).filter(c=>c!==code);
+  document.getElementById('translate-source-list').innerHTML = sources.length ? sources.map(c=>{
+    const meta = LANGS.find(l=>l.code===c) || {name:c};
+    const label = c==='default' ? 'Глобально' : meta.name;
+    return `<div class="dd-option" style="padding:10px 12px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; border:1px solid var(--border-2); margin-bottom:6px" onclick="runTranslate('${c}')">${label}</div>`;
+  }).join('') : `<div class="cell-sub">Нет других языков в этой ветке, с которых можно перевести.</div>`;
+  document.getElementById('translate-modal').classList.add('show');
+}
+function closeTranslateModal(){
+  document.getElementById('translate-modal').classList.remove('show');
+  translateTarget = null;
+}
+function runTranslate(sourceCode){
+  if (!translateTarget) return;
+  const {scope, code} = translateTarget;
+  const langs = getLangsObj(scope);
+  const src = langs[sourceCode];
+  if (!langs[code]) langs[code] = {};
+  langs[code].title = src.title;
+  langs[code].msg = src.msg;
+  closeTranslateModal();
+  renderLangBlocksFor(scope, 'lang-blocks-'+scope);
+  if (curPreviewScope===scope && curPreviewLang===code) renderCPreview();
+}
+
+/* ---- медиа ---- */
+function toggleCBanner(){ draft.banner = !draft.banner; document.getElementById('c-banner-label').textContent = draft.banner ? 'banner.jpg загружен' : 'Перетащите файл или нажмите — до 7 MB'; renderCPreview(); }
+
+/* ---- превью ---- */
+function renderPreviewSeg(){
+  const plats = ['ios','android','pwa'];
+  const names = {ios:'iOS', android:'Android', pwa:'PWA'};
+  document.getElementById('c-preview-seg').innerHTML = plats.map(k=>`<button class="${k===curPreviewPlat?'active':''}" onclick="curPreviewPlat='${k}'; renderPreviewSeg(); renderCPreview()">${names[k]}</button>`).join('');
+}
+function setPreviewScope(scope, code){
+  curPreviewScope = scope;
+  curPreviewLang = code || 'default';
+  const meta = LANGS.find(l=>l.code===curPreviewLang);
+  const langLabel = (curPreviewLang==='default' ? 'Глобально' : (meta?.name || curPreviewLang));
+  const idx = Number(scope.slice(1));
+  const b = draft.branches[idx];
+  let branchLabel = scope;
+  if (b){
+    if (draft.type==='event'){
+      const ev = BRANCH_EVENTS.find(([k])=>k===b.event);
+      branchLabel = ev ? ev[1] : scope;
+    } else {
+      branchLabel = 'Ветка ' + (idx+1);
+    }
+  }
+  const lbl = document.getElementById('c-preview-lang-label');
+  if (lbl) lbl.textContent = '· ' + branchLabel + ' · ' + langLabel;
+  renderCPreview();
+}
+function renderCPreview(){
+  const langs = getLangsObj(curPreviewScope) || {};
+  const l = langs[curPreviewLang] || langs.default || {title:'', msg:''};
+  const title = resolveSpintax(l.title||'').text || '(без заголовка)';
+  const msg = resolveSpintax(l.msg||'').text || '(без текста)';
+  const meta = LANGS.find(x=>x.code===curPreviewLang);
+  const notif = document.getElementById('c-notif');
+  if (!notif) return;
+  notif.innerHTML = `<div class="notif" ${meta?.rtl?'dir="rtl"':''}>
+    <div class="notif-icon">W</div>
+    <div class="notif-body">
+      <div class="notif-app"><span>WWA APP</span><span>сейчас</span></div>
+      <div class="notif-title">${title}</div>
+      <div class="notif-text">${msg}</div>
+      ${draft.banner?'<div class="notif-banner">BANNER</div>':''}
+    </div></div>`;
+  const combos = (resolveSpintax(l.title||'').combos || 1) * (resolveSpintax(l.msg||'').combos || 1);
+  const hint = document.getElementById('c-preview-hint');
+  if (hint) hint.innerHTML = `Показана 1 из <b>${combos}</b> комбинаций для выбранного блока.`;
+}
+
+/* ---- сохранение пака ---- */
+function finishCreate(){
+  if (!draft.packName || !draft.packName.trim()){
+    document.getElementById('pack-name-error').style.display = 'block';
+    document.getElementById('packname-card').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  if (!draft.branches.length){
+    document.getElementById('fg-what').scrollIntoView({behavior:'smooth', block:'start'});
+    return;
+  }
+  const domainVal = draft.target==='audience'
+    ? (audiences.find(a=>a.id===draft.audienceId)?.name || 'Аудитория')
+    : (targetLists[draft.target].domain.join(', ') || '—');
+  const link = document.getElementById('c-link-input')?.value || '';
+  const geo = selectedGeo.join(', ');
+  draft.branches.forEach(b=>{
+    const row = {
+      id:'ps_'+Math.floor(Math.random()*9000+1000), name: draft.packName.slice(0,60),
+      type: draft.type, domain: domainVal, target: draft.target,
+      geo, on:true, langs: b.langs, plats:{ios:true,android:true,pwa:true}, link,
+    };
+    if (draft.type==='event'){
+      row.event = b.event; row.delay = chainSteps[0]||'5m';
+    } else if (draft.type==='interval'){
+      row.time = b.time||'00:05'; row.date = b.date||'—'; row.repeat = b.repeat||'Каждую неделю'; row.event = b.audience||'all'; row.weekdays = b.weekdays||[];
+    } else {
+      row.time = b.time||'10:00'; row.date = b.date||'—'; row.event = b.audience||'all'; row.weekdays = b.weekdays||[];
+    }
+    pushes.push(row);
+  });
+  setTypeFilter(draft.type);
+  showView('pushes');
+}
+
+function startCreate(){
+  resetDraft();
+  showView('create');
+  document.querySelectorAll('.rail-item').forEach(r=>r.classList.toggle('active', r.dataset.g==='when'));
+  document.getElementById('rail-dot-who')?.classList.add('filled');
+  document.getElementById('rail-dot-what')?.classList.remove('filled');
+  document.getElementById('pack-name-input').value = '';
+  document.getElementById('pack-name-error').style.display = 'none';
+  targetLists = {domain:{domain:['brz-domain.com'], app:[]}, naming:{domain:[], app:[]}};
+  selectedGeo = [];
+  mselOpen.geo = false;
+  document.getElementById('geo-msel-wrap').innerHTML = renderMsel('geo', 'Гео');
+  setTargetMode('domain');
+  setCreateType('event');
+  renderPreviewSeg();
+}
+
+/* ===================== АУДИТОРИИ (переиспользуемая сущность) ===================== */
+
+const AUD_FIELD_DEFS = {
+  geo:     {label:'Гео', type:'chips', options: GEO_CATALOG},
+  event:   {label:'Событие', type:'chips', options:['install','reg','dep','redep2'], optionLabels:{install:'Install', reg:'Регистрация', dep:'Депозит', redep2:'Редепозит 2+'}},
+  domain:  {label:'Домен', type:'chips', options: DOMAIN_CATALOG},
+  naming:  {label:'Нейминг', type:'chips', options: NAMING_CATALOG},
+  clickid: {label:'Список clickid', type:'textarea'},
+  lang:    {label:'Язык', type:'chips', options: LANGS.filter(l=>l.code!=='default').map(l=>l.code), optionLabels: Object.fromEntries(LANGS.map(l=>[l.code,l.name]))},
+  app:     {label:'Приложения', type:'chips', options: APP_CATALOG.map(a=>a.name)},
+  pwa_id:  {label:'Айди ПВА', type:'textarea'},
+  os:      {label:'ОС устройства', type:'chips', options:['ios','android'], optionLabels:{ios:'iOS', android:'Android'}},
+};
+let audiences = [
+  {id:'aud_1', name:'UA+KZ, событие деп', groups:[{join:'AND', conds:[{field:'geo', val:['UA','KZ']}, {field:'event', val:['dep']}]}], reach: 18420},
+];
+let audGroups = [];
+function renderAudiencesList(){
+  document.getElementById('audiences-tbody').innerHTML = audiences.length ? audiences.map(a=>{
+    const summary = a.groups.map(g=>g.conds.map(c=>{
+      const def = AUD_FIELD_DEFS[c.field];
+      const valStr = Array.isArray(c.val)
+        ? (c.val.length ? c.val.map(v=>def.optionLabels?def.optionLabels[v]:v).join('/') : '—')
+        : ((c.val||'').trim() || '—');
+      return def.label+': '+valStr;
+    }).join(g.join==='AND'?' И ':' ИЛИ ')).join(' / ');
+    return `<tr><td>${a.name}</td><td class="cell-sub">${summary}</td><td>${a.reach.toLocaleString('ru-RU')}</td><td><span onclick="deleteAudience('${a.id}')" style="cursor:pointer; color:var(--text-3); font-size:15px">×</span></td></tr>`;
+  }).join('') : `<tr><td colspan="4"><div class="empty-state"><div class="big">◎</div>Аудиторий пока нет<br><button class="btn primary sm" style="margin-top:14px" onclick="openAudienceCreate()">+ Создать аудиторию</button></div></td></tr>`;
+}
+function deleteAudience(id){ audiences = audiences.filter(a=>a.id!==id); renderAudiencesList(); }
+function openAudienceCreate(){
+  audGroups = [{join:'AND', conds:[{field:'geo', val:[]}]}];
+  document.getElementById('aud-name-input').value = '';
+  document.getElementById('audience-create-card').style.display = 'block';
+  renderAudGroups();
+}
+function closeAudienceCreate(){ document.getElementById('audience-create-card').style.display = 'none'; }
+function renderAudGroups(){
+  document.getElementById('aud-groups').innerHTML = audGroups.map((g,gi)=>`
+    <div class="grp">
+      <div class="grp-head"><span class="grp-title">Группа ${gi+1}</span>
+        <span class="joiner"><button class="${g.join==='AND'?'active':''}" onclick="setAudGJoin(${gi},'AND')">И</button><button class="${g.join==='OR'?'active':''}" onclick="setAudGJoin(${gi},'OR')">ИЛИ</button></span>
+        <span style="flex:1"></span><span class="rm" onclick="rmAudGroup(${gi})">×</span>
+      </div>
+      ${g.conds.map((c,ci)=>renderAudCond(gi,ci,c)).join('')}
+      <button class="btn sm" onclick="addAudCond(${gi})">+ условие</button>
+    </div>
+  `).join('');
+  updateAudReachPreview();
+}
+function renderAudCond(gi, ci, c){
+  const def = AUD_FIELD_DEFS[c.field];
+  const fieldSelect = `<select onchange="updAudCondField(${gi},${ci},this.value)" style="flex:1">${Object.entries(AUD_FIELD_DEFS).map(([k,d])=>`<option value="${k}" ${c.field===k?'selected':''}>${d.label}</option>`).join('')}</select>`;
+  let valueHtml;
+  if (def.type==='chips'){
+    const selected = Array.isArray(c.val) ? c.val : [];
+    const allSelected = def.options.length>0 && def.options.every(o=>selected.includes(o));
+    valueHtml = `<div style="margin-top:8px">
+      <button class="btn sm ghost" style="padding:2px 8px; margin-bottom:6px" onclick="audCondSelectAll(${gi},${ci})">${allSelected?'Снять все':'Выбрать все'}</button>
+      <div class="chip-row">${def.options.map(o=>{
+        const lbl = def.optionLabels ? def.optionLabels[o] : o;
+        return `<button class="chip ${selected.includes(o)?'active':''}" onclick="toggleAudCondValue(${gi},${ci},'${o.replace(/'/g,"\\'")}')">${lbl}</button>`;
+      }).join('')}</div>
+    </div>`;
+  } else {
+    valueHtml = `<textarea rows="2" class="mono" style="margin-top:8px" placeholder="1 значение = 1 строка" oninput="updAudCondText(${gi},${ci},this.value)">${escHtml(c.val||'')}</textarea>`;
+  }
+  return `<div class="cond" style="flex-direction:column; align-items:stretch">
+    <div style="display:flex; gap:8px; align-items:center">
+      ${fieldSelect}
+      <span class="rm" onclick="rmAudCond(${gi},${ci})">×</span>
+    </div>
+    ${valueHtml}
+  </div>`;
+}
+function setAudGJoin(gi,v){ audGroups[gi].join=v; renderAudGroups(); }
+function addAudGroup(){ audGroups.push({join:'AND', conds:[{field:'geo', val:[]}]}); renderAudGroups(); }
+function rmAudGroup(gi){ audGroups.splice(gi,1); renderAudGroups(); }
+function addAudCond(gi){ audGroups[gi].conds.push({field:'geo', val:[]}); renderAudGroups(); }
+function rmAudCond(gi,ci){ audGroups[gi].conds.splice(ci,1); if(!audGroups[gi].conds.length) audGroups.splice(gi,1); renderAudGroups(); }
+function updAudCondField(gi,ci,field){
+  const def = AUD_FIELD_DEFS[field];
+  audGroups[gi].conds[ci] = {field, val: def.type==='chips' ? [] : ''};
+  renderAudGroups();
+}
+function toggleAudCondValue(gi,ci,opt){
+  const c = audGroups[gi].conds[ci];
+  if (!Array.isArray(c.val)) c.val = [];
+  const idx = c.val.indexOf(opt);
+  if (idx>=0) c.val.splice(idx,1); else c.val.push(opt);
+  renderAudGroups();
+}
+function audCondSelectAll(gi,ci){
+  const c = audGroups[gi].conds[ci];
+  const def = AUD_FIELD_DEFS[c.field];
+  const allSelected = def.options.every(o=>(c.val||[]).includes(o));
+  c.val = allSelected ? [] : [...def.options];
+  renderAudGroups();
+}
+function updAudCondText(gi,ci,val){
+  audGroups[gi].conds[ci].val = val;
+  updateAudReachPreview();
+}
+function estimateReach(groups){
+  const base = SUBS_TOTAL;
+  const factors = groups.map(g=>{
+    const cf = g.conds.map(c=>{
+      const def = AUD_FIELD_DEFS[c.field];
+      if (def.type==='chips'){
+        const n = Array.isArray(c.val) ? c.val.length : 0;
+        if (!n) return 1;
+        const total = def.options.length || 1;
+        if (c.field==='os') return n>=2 ? 1 : 0.55;
+        const weight = {geo:0.9, event:0.4, domain:0.6, naming:0.4, lang:0.7, app:0.5}[c.field] ?? 0.5;
+        return Math.min(1, (n/total) * weight + (c.field==='geo' ? 0 : 0));
+      }
+      const val = (c.val||'').trim();
+      if (!val) return 1;
+      const lines = val.split('\n').filter(x=>x.trim()).length;
+      return Math.min(1, lines * 50 / SUBS_TOTAL);
+    });
+    if (!cf.length) return 1;
+    return g.join==='AND' ? cf.reduce((a,b)=>a*b,1) : 1-cf.reduce((a,b)=>a*(1-b),1);
+  });
+  if (!factors.length) return base;
+  return Math.round(base * factors.reduce((a,b)=>Math.max(a,b), 0));
+}
+function updateAudReachPreview(){
+  document.getElementById('aud-reach-preview').textContent = estimateReach(audGroups).toLocaleString('ru-RU');
+}
+function saveNewAudience(){
+  const name = document.getElementById('aud-name-input').value.trim() || 'Новая аудитория '+(audiences.length+1);
+  audiences.push({id:'aud_'+Math.floor(Math.random()*9000+1000), name, groups: JSON.parse(JSON.stringify(audGroups)), reach: estimateReach(audGroups)});
+  closeAudienceCreate();
+  renderAudiencesList();
+}
+
+/* ===================== INIT ===================== */
+resetDraft();
+renderPushList();
+</script>
+</body>
+</html>
