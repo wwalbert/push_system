@@ -221,6 +221,9 @@
   .cond select, .cond input{ width:auto; min-width:120px; flex:1; padding:7px 9px; font-size:12.5px; background:var(--surface); }
   .cond .rm{ width:26px; height:26px; border-radius:7px; border:1px solid var(--border-2); background:var(--surface); color:var(--text-3); cursor:pointer; flex-shrink:0; font-size:14px; line-height:1; }
   .cond .rm:hover{ color:var(--red); border-color:var(--red-ring); background:var(--red-soft); }
+  .cond .msel-search{ width:100%; min-width:0; flex:0 0 auto; }
+  .cond .msel-row input[type=checkbox]{ width:14px; min-width:0; flex:0 0 14px; }
+  .cond .msel-list{ max-height:158px; }
   .joiner{ display:inline-flex; background:var(--surface); border:1px solid var(--border-2); border-radius:7px; overflow:hidden; }
   .joiner button{ border:none; background:transparent; padding:5px 12px; font-size:11.5px; font-weight:700; color:var(--text-3); cursor:pointer; font-family:inherit; }
   .joiner button.active{ background:var(--accent); color:#fff; }
@@ -1708,6 +1711,7 @@ const AUD_FIELD_DEFS = {
   event:   {label:'Событие', type:'chips', options:['install','reg','dep','redep2'], optionLabels:{install:'Install', reg:'Регистрация', dep:'Депозит', redep2:'Редепозит 2+'}},
   domain:  {label:'Домен', type:'chips', options: DOMAIN_CATALOG},
   naming:  {label:'Нейминг', type:'chips', options: NAMING_CATALOG},
+  sub:     {label:'Sub', type:'sub', options: SUB_VALUE_CATALOG},
   clickid: {label:'Список clickid', type:'textarea'},
   lang:    {label:'Язык', type:'chips', options: LANGS.filter(l=>l.code!=='default').map(l=>l.code), optionLabels: Object.fromEntries(LANGS.map(l=>[l.code,l.name]))},
   app:     {label:'Приложения', type:'chips', options: APP_CATALOG.map(a=>a.name)},
@@ -1742,6 +1746,7 @@ function selectPackAudience(id){
   setTargetMode('audience');
 }
 function openAudModal(){
+  audSubOpen = null; audSubFilter = '';
   packAud.groups = [{join:'AND', conds:[{field:'geo', val:[]}]}];
   document.getElementById('pack-aud-name').value = '';
   document.getElementById('aud-modal').classList.add('show');
@@ -1761,9 +1766,11 @@ function renderAudiencesList(){
   document.getElementById('audiences-tbody').innerHTML = audiences.length ? audiences.map(a=>{
     const summary = a.groups.map(g=>g.conds.map(c=>{
       const def = AUD_FIELD_DEFS[c.field];
-      const valStr = Array.isArray(c.val)
-        ? (c.val.length ? c.val.map(v=>def.optionLabels?def.optionLabels[v]:v).join('/') : '—')
-        : ((c.val||'').trim() || '—');
+      const valStr = def.type==='sub'
+        ? (c.val && c.val.vals && c.val.vals.length ? c.val.key+' = '+c.val.vals.join('/') : '—')
+        : Array.isArray(c.val)
+          ? (c.val.length ? c.val.map(v=>def.optionLabels?def.optionLabels[v]:v).join('/') : '—')
+          : ((c.val||'').trim() || '—');
       return def.label+': '+valStr;
     }).join(g.join==='AND'?' И ':' ИЛИ ')).join(' / ');
     return `<tr><td>${a.name}</td><td class="cell-sub">${summary}</td><td>${a.reach.toLocaleString('ru-RU')}</td><td><span onclick="deleteAudience('${a.id}')" style="cursor:pointer; color:var(--text-3); font-size:15px">×</span></td></tr>`;
@@ -1771,6 +1778,7 @@ function renderAudiencesList(){
 }
 function deleteAudience(id){ audiences = audiences.filter(a=>a.id!==id); renderAudiencesList(); }
 function openAudienceCreate(){
+  audSubOpen = null; audSubFilter = '';
   audGroups = [{join:'AND', conds:[{field:'geo', val:[]}]}];
   document.getElementById('aud-name-input').value = '';
   document.getElementById('audience-create-card').style.display = 'block';
@@ -1812,6 +1820,14 @@ function renderAudCond(ctx, gi, ci, c){
         return `<button class="chip ${selected.includes(o)?'active':''}" onclick="toggleAudCondValue('${ctx}',${gi},${ci},'${o.replace(/'/g,"\\'")}')">${lbl}</button>`;
       }).join('')}</div>
     </div>`;
+  } else if (def.type==='sub'){
+    const v = audSubVal(c);
+    valueHtml = `<div style="margin-top:8px; display:flex; gap:10px; align-items:flex-start">
+      <select style="flex:0 0 108px; min-width:0" onchange="updAudSubKey('${ctx}',${gi},${ci},this.value)">
+        ${SUB_KEYS.map(k=>`<option value="${k}" ${v.key===k?'selected':''}>${k}</option>`).join('')}
+      </select>
+      <div style="flex:1; min-width:0">${renderAudSubMsel(ctx,gi,ci,c)}</div>
+    </div>`;
   } else {
     valueHtml = `<textarea rows="2" class="mono" style="margin-top:8px" placeholder="1 значение = 1 строка" oninput="updAudCondText('${ctx}',${gi},${ci},this.value)">${escHtml(c.val||'')}</textarea>`;
   }
@@ -1822,6 +1838,103 @@ function renderAudCond(ctx, gi, ci, c){
     </div>
     ${valueHtml}
   </div>`;
+}
+/* условие «Sub» — одно имя саба плюс его значения, как и в таргете */
+function audSubVal(c){
+  if (!c.val || Array.isArray(c.val) || typeof c.val !== 'object') c.val = {key:'sub2', vals:[]};
+  return c.val;
+}
+let audSubOpen = null;
+let audSubFilter = '';
+function audSubId(ctx,gi,ci){ return `audsub-${ctx}-${gi}-${ci}`; }
+function audSubVisible(id){
+  const all = AUD_FIELD_DEFS.sub.options;
+  const f = (audSubOpen===id ? audSubFilter : '').toLowerCase();
+  return f ? all.filter(o=>o.toLowerCase().includes(f)) : all;
+}
+function renderAudSubMsel(ctx,gi,ci,c){
+  const v = audSubVal(c), id = audSubId(ctx,gi,ci), open = audSubOpen===id;
+  return `<div class="msel ${open?'open':''}" id="${id}">
+    <div class="msel-header" onclick="toggleAudSubMsel('${ctx}',${gi},${ci})">
+      <span class="msel-label">Значения</span>
+      <span class="msel-summary" id="${id}-summary">${v.vals.length ? 'Выбрано: '+v.vals.length : 'Не выбрано'}</span>
+      <span class="msel-chevron">⌄</span>
+    </div>
+    <div class="msel-panel" id="${id}-panel" style="display:${open?'flex':'none'}">
+      <input type="text" class="msel-search" id="${id}-search" placeholder="Поиск значения" value="${open?escHtml(audSubFilter):''}" onclick="event.stopPropagation()" oninput="filterAudSub('${ctx}',${gi},${ci},this.value)">
+      <div class="msel-selectall" id="${id}-selectall" onclick="event.stopPropagation(); audSubSelectAll('${ctx}',${gi},${ci})">${audSubAllSelected(id,v)?'Снять все':'Выбрать все'}</div>
+      <div class="msel-list" id="${id}-list">${renderAudSubRows(ctx,gi,ci)}</div>
+    </div>
+  </div>`;
+}
+function audSubAllSelected(id,v){
+  const visible = audSubVisible(id);
+  return visible.length>0 && visible.every(o=>v.vals.includes(o));
+}
+function renderAudSubRows(ctx,gi,ci){
+  const v = audSubVal(AUD_CTX[ctx].groups()[gi].conds[ci]);
+  const visible = audSubVisible(audSubId(ctx,gi,ci));
+  if (!visible.length) return `<div class="cell-sub" style="padding:8px 4px">Ничего не найдено.</div>`;
+  return visible.map(o=>`<label class="msel-row" onclick="event.stopPropagation()">
+    <input type="checkbox" ${v.vals.includes(o)?'checked':''} onchange="toggleAudSubVal('${ctx}',${gi},${ci},'${o.replace(/'/g,"\\'")}')">
+    <span>${escHtml(o)}</span>
+  </label>`).join('');
+}
+/* обновляем только саму выпадашку — иначе перерисовка группы гасит фокус в поиске */
+function refreshAudSub(ctx,gi,ci){
+  const id = audSubId(ctx,gi,ci);
+  const v = audSubVal(AUD_CTX[ctx].groups()[gi].conds[ci]);
+  const list = document.getElementById(id+'-list');
+  if (list) list.innerHTML = renderAudSubRows(ctx,gi,ci);
+  const sum = document.getElementById(id+'-summary');
+  if (sum) sum.textContent = v.vals.length ? 'Выбрано: '+v.vals.length : 'Не выбрано';
+  const sa = document.getElementById(id+'-selectall');
+  if (sa) sa.textContent = audSubAllSelected(id,v) ? 'Снять все' : 'Выбрать все';
+  updateAudReachPreview(ctx);
+}
+function toggleAudSubMsel(ctx,gi,ci){
+  const id = audSubId(ctx,gi,ci);
+  const opening = audSubOpen !== id;
+  if (audSubOpen){
+    const prev = document.getElementById(audSubOpen);
+    const prevPanel = document.getElementById(audSubOpen+'-panel');
+    if (prev) prev.classList.remove('open');
+    if (prevPanel) prevPanel.style.display = 'none';
+  }
+  audSubOpen = opening ? id : null;
+  audSubFilter = '';
+  const wrap = document.getElementById(id), panel = document.getElementById(id+'-panel');
+  if (!wrap || !panel) return;
+  wrap.classList.toggle('open', opening);
+  panel.style.display = opening ? 'flex' : 'none';
+  if (opening){
+    const inp = document.getElementById(id+'-search');
+    if (inp){ inp.value = ''; inp.focus(); }
+    refreshAudSub(ctx,gi,ci);
+  }
+}
+function filterAudSub(ctx,gi,ci,val){
+  audSubFilter = val;
+  refreshAudSub(ctx,gi,ci);
+}
+function updAudSubKey(ctx,gi,ci,key){
+  const v = audSubVal(AUD_CTX[ctx].groups()[gi].conds[ci]);
+  v.key = key; v.vals = [];
+  refreshAudSub(ctx,gi,ci);
+}
+function toggleAudSubVal(ctx,gi,ci,opt){
+  const v = audSubVal(AUD_CTX[ctx].groups()[gi].conds[ci]);
+  const idx = v.vals.indexOf(opt);
+  if (idx>=0) v.vals.splice(idx,1); else v.vals.push(opt);
+  refreshAudSub(ctx,gi,ci);
+}
+function audSubSelectAll(ctx,gi,ci){
+  const id = audSubId(ctx,gi,ci);
+  const v = audSubVal(AUD_CTX[ctx].groups()[gi].conds[ci]);
+  const visible = audSubVisible(id);
+  if (audSubAllSelected(id,v)) visible.forEach(o=>{ const i=v.vals.indexOf(o); if(i>=0) v.vals.splice(i,1); });
+  else visible.forEach(o=>{ if(!v.vals.includes(o)) v.vals.push(o); });
+  refreshAudSub(ctx,gi,ci);
 }
 function setAudGJoin(ctx,gi,v){ AUD_CTX[ctx].groups()[gi].join=v; renderAudGroups(ctx); }
 function addAudGroup(ctx){ AUD_CTX[ctx].groups().push({join:'AND', conds:[{field:'geo', val:[]}]}); renderAudGroups(ctx); }
@@ -1835,7 +1948,8 @@ function rmAudCond(ctx,gi,ci){
 }
 function updAudCondField(ctx,gi,ci,field){
   const def = AUD_FIELD_DEFS[field];
-  AUD_CTX[ctx].groups()[gi].conds[ci] = {field, val: def.type==='chips' ? [] : ''};
+  const blank = def.type==='chips' ? [] : (def.type==='sub' ? {key:'sub2', vals:[]} : '');
+  AUD_CTX[ctx].groups()[gi].conds[ci] = {field, val: blank};
   renderAudGroups(ctx);
 }
 function toggleAudCondValue(ctx,gi,ci,opt){
@@ -1861,6 +1975,10 @@ function estimateReach(groups){
   const factors = groups.map(g=>{
     const cf = g.conds.map(c=>{
       const def = AUD_FIELD_DEFS[c.field];
+      if (def.type==='sub'){
+        const n = (c.val && c.val.vals) ? c.val.vals.length : 0;
+        return n ? Math.min(1, (n/def.options.length) * 0.4) : 1;
+      }
       if (def.type==='chips'){
         const n = Array.isArray(c.val) ? c.val.length : 0;
         if (!n) return 1;
