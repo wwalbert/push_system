@@ -172,6 +172,17 @@
   .msel-row{ display:flex; align-items:center; gap:8px; padding:7px 6px; border-radius:6px; cursor:pointer; font-size:12.5px; }
   .msel-row:hover{ background:var(--surface-2); }
   .msel-row input[type=checkbox]{ accent-color:var(--accent); width:14px; height:14px; flex-shrink:0; }
+  .sub-cols{ display:flex; gap:10px; align-items:stretch; }
+  .sub-keys{ width:110px; flex-shrink:0; display:flex; flex-direction:column; gap:2px; max-height:260px; overflow-y:auto; border-right:1px solid var(--border-2); padding-right:8px; }
+  .sub-key{ display:flex; align-items:center; gap:6px; padding:7px 9px; border-radius:7px; font-size:12.5px; font-weight:650; color:var(--text-2); cursor:pointer; }
+  .sub-key:hover{ background:var(--surface-2); }
+  .sub-key.active{ background:var(--accent-soft); color:var(--accent-text); }
+  .sub-key.disabled{ opacity:.45; cursor:not-allowed; color:var(--text-3); }
+  .sub-key.disabled:hover{ background:transparent; }
+  .sub-lock-note{ font-size:11px; line-height:1.45; color:var(--text-3); background:var(--surface-2); border:1px solid var(--border-2); border-radius:7px; padding:7px 9px; margin-bottom:8px; }
+  .sub-key-count{ margin-left:auto; font-size:10px; font-weight:700; color:var(--text-3); }
+  .sub-key.active .sub-key-count{ color:var(--accent-text); }
+  .sub-vals{ flex:1; min-width:0; display:flex; flex-direction:column; }
   .msel-badge{ font-size:9.5px; font-weight:700; padding:1px 6px; border-radius:4px; background:var(--surface-2); color:var(--text-3); border:1px solid var(--border-2); margin-left:auto; }
 
   .chip-row{ display:flex; flex-wrap:wrap; gap:8px; }
@@ -267,6 +278,7 @@
   .modal-overlay{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:300; align-items:center; justify-content:center; padding:20px; }
   .modal-overlay.show{ display:flex; }
   .modal{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 24px; width:100%; max-width:440px; box-shadow:var(--shadow-md); }
+  .modal.wide{ max-width:640px; max-height:86vh; overflow-y:auto; }
   .modal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; gap:12px; }
   .icon-x{ cursor:pointer; color:var(--text-3); font-size:18px; line-height:1; padding:2px 4px; }
   .icon-x:hover{ color:var(--text); }
@@ -440,12 +452,6 @@
                 <div class="fstep-hint"><span class="needs-decision">один спек изображения на все три платформы — размеры уточняются с командой</span></div>
               </div>
 
-              <div class="fsub">
-                <div class="fsub-label">Ссылка</div>
-                <div class="field"><label class="fl">URL (опционально — по умолчанию ссылка потока)</label><input type="text" class="mono" id="c-link-input" placeholder="https://…"></div>
-                <div class="banner warn">⚠️ Если юзер тапнул именно по этому пушу — новая ссылка навсегда заменяет вебвью-поток на устройстве. Два тапа подряд по разным пушам — last-write-wins.</div>
-              </div>
-
               <button class="btn primary" style="width:100%; justify-content:center; padding:13px; margin-top:6px" onclick="finishCreate()">Завершить</button>
             </div>
 
@@ -483,6 +489,22 @@
         </div>
       </div>
 
+      <!-- ============== МОДАЛКА СОЗДАНИЯ АУДИТОРИИ ============== -->
+      <div class="modal-overlay" id="aud-modal">
+        <div class="modal wide">
+          <div class="modal-head"><h2 style="margin:0">Новая аудитория</h2><span class="icon-x" onclick="closeAudModal()">×</span></div>
+          <div class="field"><label class="fl">Название</label><input type="text" id="pack-aud-name" placeholder="напр. UA+KZ, деп 1+"></div>
+          <div class="fsub-label" style="margin-top:16px">Условия</div>
+          <div id="pack-aud-groups"></div>
+          <button class="btn sm" onclick="addAudGroup('pack')">+ Группа условий</button>
+          <div class="reach-mini" style="margin-top:16px"><span>Оценочный охват:</span><b id="pack-aud-reach">—</b></div>
+          <div style="margin-top:18px; display:flex; justify-content:flex-end; gap:8px">
+            <button class="btn" onclick="closeAudModal()">Отмена</button>
+            <button class="btn primary" onclick="createAudFromModal()">Создать аудиторию</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ============== АУДИТОРИИ ============== -->
       <div class="view" id="view-audiences">
         <div class="header">
@@ -508,7 +530,7 @@
           <div class="field"><label class="fl">Название</label><input type="text" id="aud-name-input" placeholder="напр. UA+KZ, домен, деп 1+"></div>
           <div class="fsub-label" style="margin-top:16px">Условия</div>
           <div id="aud-groups"></div>
-          <button class="btn sm" onclick="addAudGroup()">+ Группа условий</button>
+          <button class="btn sm" onclick="addAudGroup('aud')">+ Группа условий</button>
           <div class="reach-mini" style="margin-top:16px"><span>Оценочный охват:</span><b id="aud-reach-preview">—</b></div>
           <div class="apply-row" style="margin-top:16px; display:flex; justify-content:flex-end; gap:8px">
             <button class="btn" onclick="closeAudienceCreate()">Отмена</button>
@@ -957,7 +979,7 @@ const AUDIENCE_OPTIONS = [['all','Всем'], ...BRANCH_EVENTS];
 function resetDraft(){
   draft = {
     packName: '',
-    type:'event', target:'domain', audienceId:null,
+    type:'event', target:'domain',
     branches:[makeBranch('event')],
     banner:false,
   };
@@ -994,13 +1016,8 @@ function setTargetMode(v){
   document.querySelectorAll('#target-seg button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
   const body = document.getElementById('target-body');
   if (v==='audience'){
-    body.innerHTML = audiences.length ? `
-      <select id="target-audience-select" onchange="draft.audienceId=this.value">
-        ${audiences.map(a=>`<option value="${a.id}">${a.name} — ${a.reach.toLocaleString('ru-RU')}</option>`).join('')}
-      </select>
-      <div class="cell-sub" style="margin-top:8px"><a href="#" onclick="showView('audiences'); return false;" style="color:var(--accent-text)">Управлять аудиториями →</a></div>`
-      : `<div class="cell-sub">Сохранённых аудиторий пока нет. <a href="#" onclick="showView('audiences'); return false;" style="color:var(--accent-text)">Создать аудиторию →</a></div>`;
-    if (audiences.length) draft.audienceId = audiences[0].id;
+    body.innerHTML = renderPackAudience();
+    renderAudGroups('pack');
   } else {
     const label = v==='naming' ? 'Нейминг' : 'Домен';
     body.innerHTML = `
@@ -1008,15 +1025,16 @@ function setTargetMode(v){
       <div class="grid-2">
         ${renderMsel('domain', label)}
         ${renderMsel('app', 'Приложения')}
-      </div>`;
-    mselOpen.domain = false; mselOpen.app = false;
+      </div>
+      <div style="margin-top:12px">${renderSubMsel()}</div>`;
+    mselOpen.domain = false; mselOpen.app = false; mselOpen.sub = false;
   }
   updateGeoVisibility();
 }
 /* домен и нейминг — раздельные цели по ТЗ, поэтому у каждого режима свой список */
 let targetLists = {
-  domain:{domain:['brz-domain.com'], app:[]},
-  naming:{domain:[], app:[]},
+  domain:{domain:['brz-domain.com'], app:[], subs:{}},
+  naming:{domain:[], app:[], subs:{}},
 };
 const DOMAIN_CATALOG = ['brz-domain.com','gm96.top','brz-domain2.com','wwa-top.com'];
 const NAMING_CATALOG = ['gm96','gm96-alt','tz53','plinko-za'];
@@ -1027,7 +1045,7 @@ const APP_CATALOG = [
 ];
 const GEO_CATALOG = ['UA','KZ','BR','IN','PH','UZ','RU','TR','MX','ID','VN','EG','NG','PK','BD'];
 let selectedGeo = [];
-let mselOpen = {domain:false, app:false, geo:false};
+let mselOpen = {domain:false, app:false, geo:false, sub:false};
 let mselFilter = {domain:'', app:'', geo:''};
 function getMselList(kind){
   return kind==='geo' ? selectedGeo : targetLists[draft.target][kind];
@@ -1096,7 +1114,7 @@ function toggleMsel(kind){
   const opening = !mselOpen[kind];
   if (opening){
     /* панели не должны перекрывать друг друга — открываем только одну одновременно */
-    ['domain','app','geo'].forEach(k=>{ if (k!==kind && mselOpen[k]) closeMsel(k); });
+    ['domain','app','geo','sub'].forEach(k=>{ if (k!==kind && mselOpen[k]) closeMsel(k); });
   }
   mselOpen[kind] = opening;
   const wrap = document.getElementById('msel-'+kind);
@@ -1151,6 +1169,137 @@ function mselToggleAllVisible(kind){
   document.getElementById('msel-'+kind+'-list').innerHTML = renderMselRows(kind);
   updateMselSummary(kind);
   updateSelectAllLabel(kind);
+}
+/* ---- sub отправки: слева имя саба (sub2-10), справа его значения ---- */
+const SUB_KEYS = ['sub2','sub3','sub4','sub5','sub6','sub7','sub8','sub9','sub10'];
+const SUB_VALUE_CATALOG = ['hjshd','IN12creo5','pushsub1','1xPKpwa','buyer1geo2iOS'];
+let subActiveKey = 'sub2';
+let subFilter = '';
+function getSubList(key){
+  const subs = targetLists[draft.target].subs;
+  if (!subs[key]) subs[key] = [];
+  return subs[key];
+}
+function subTotalCount(){
+  const subs = targetLists[draft.target].subs;
+  return SUB_KEYS.reduce((n,k)=>n+((subs[k]||[]).length), 0);
+}
+/* отправка идёт по одному сабу: как только в каком-то есть значения, остальные недоступны */
+function lockedSubKey(){
+  const subs = targetLists[draft.target].subs;
+  return SUB_KEYS.find(k=>(subs[k]||[]).length>0) || null;
+}
+function renderSubMsel(){
+  return `<div class="msel" id="msel-sub">
+    <div class="msel-header" onclick="toggleSubMsel()">
+      <span class="msel-label">Sub</span>
+      <span class="msel-summary" id="msel-sub-summary">${lockedSubKey() ? lockedSubKey()+': '+getSubList(lockedSubKey()).length : 'Не выбрано'}</span>
+      <span class="msel-chevron">⌄</span>
+    </div>
+    <div class="msel-panel" id="msel-sub-panel" style="display:none">
+      <div class="sub-cols">
+        <div class="sub-keys" id="sub-keys"></div>
+        <div class="sub-vals">
+          <div class="sub-lock-note" id="sub-lock-note" style="display:none"></div>
+          <input type="text" class="msel-search" id="sub-search" placeholder="Поиск саба" onclick="event.stopPropagation()" oninput="filterSub(this.value)" onkeydown="subSearchKeydown(event)">
+          <div class="msel-selectall" id="sub-selectall" onclick="event.stopPropagation(); subToggleAllVisible()">Выбрать все</div>
+          <div class="msel-list" id="sub-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+function toggleSubMsel(){
+  const opening = !mselOpen.sub;
+  if (opening) ['domain','app','geo'].forEach(k=>{ if (mselOpen[k]) closeMsel(k); });
+  mselOpen.sub = opening;
+  const wrap = document.getElementById('msel-sub');
+  const panel = document.getElementById('msel-sub-panel');
+  if (!wrap || !panel) return;
+  wrap.classList.toggle('open', opening);
+  panel.style.display = opening ? 'flex' : 'none';
+  if (opening){ subFilter = ''; renderSubPanel(); }
+}
+function setSubKey(k){
+  const locked = lockedSubKey();
+  if (locked && locked!==k) return;
+  subActiveKey = k; subFilter = '';
+  const inp = document.getElementById('sub-search'); if (inp) inp.value='';
+  renderSubPanel();
+}
+function subVisibleItems(){
+  const selected = getSubList(subActiveKey);
+  const all = [...SUB_VALUE_CATALOG, ...selected.filter(v=>!SUB_VALUE_CATALOG.includes(v))];
+  const f = subFilter.toLowerCase();
+  return f ? all.filter(v=>v.toLowerCase().includes(f)) : all;
+}
+function renderSubPanel(){
+  const subs = targetLists[draft.target].subs;
+  const locked = lockedSubKey();
+  if (locked) subActiveKey = locked;
+  document.getElementById('sub-keys').innerHTML = SUB_KEYS.map(k=>{
+    const n = (subs[k]||[]).length;
+    const dis = locked && locked!==k;
+    return `<div class="sub-key ${k===subActiveKey?'active':''} ${dis?'disabled':''}"${dis?'':` onclick="event.stopPropagation(); setSubKey('${k}')"`}>${k}${n?`<span class="sub-key-count">${n}</span>`:''}</div>`;
+  }).join('');
+  const note = document.getElementById('sub-lock-note');
+  if (note){
+    note.style.display = locked ? '' : 'none';
+    if (locked) note.textContent = `Пуш уходит по одному сабу. Выбран ${locked} — чтобы перейти на другой, снимите здесь все значения.`;
+  }
+  renderSubRows();
+}
+function renderSubRows(){
+  const selected = getSubList(subActiveKey);
+  const visible = subVisibleItems();
+  document.getElementById('sub-list').innerHTML = visible.length
+    ? visible.map(v=>`<label class="msel-row" onclick="event.stopPropagation()">
+        <input type="checkbox" ${selected.includes(v)?'checked':''} onchange="toggleSubItem('${v.replace(/'/g,"\\'")}')">
+        <span>${escHtml(v)}</span>
+      </label>`).join('')
+    : `<div class="cell-sub" style="padding:8px 4px">Ничего не найдено — нажмите Enter в поиске, чтобы добавить как новое значение.</div>`;
+  updateSubSelectAllLabel();
+}
+function filterSub(val){ subFilter = val; renderSubRows(); }
+function toggleSubItem(v){
+  const list = getSubList(subActiveKey);
+  const idx = list.indexOf(v);
+  if (idx>=0) list.splice(idx,1); else list.push(v);
+  updateSubSummary();
+  renderSubPanel();
+}
+function subSearchKeydown(e){
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const items = e.target.value.split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean);
+  if (!items.length) return;
+  const list = getSubList(subActiveKey);
+  items.forEach(it=>{ if (!list.includes(it)) list.push(it); });
+  subFilter = ''; e.target.value = '';
+  updateSubSummary();
+  renderSubPanel();
+}
+function subToggleAllVisible(){
+  const list = getSubList(subActiveKey);
+  const visible = subVisibleItems();
+  const allSelected = visible.length>0 && visible.every(v=>list.includes(v));
+  if (allSelected) visible.forEach(v=>{ const i=list.indexOf(v); if (i>=0) list.splice(i,1); });
+  else visible.forEach(v=>{ if (!list.includes(v)) list.push(v); });
+  updateSubSummary();
+  renderSubPanel();
+}
+function updateSubSelectAllLabel(){
+  const btn = document.getElementById('sub-selectall');
+  if (!btn) return;
+  const list = getSubList(subActiveKey);
+  const visible = subVisibleItems();
+  btn.textContent = (visible.length>0 && visible.every(v=>list.includes(v))) ? 'Снять все' : 'Выбрать все';
+}
+function updateSubSummary(){
+  const el = document.getElementById('msel-sub-summary');
+  if (!el) return;
+  const locked = lockedSubKey();
+  el.textContent = locked ? `${locked}: ${getSubList(locked).length}` : 'Не выбрано';
 }
 function updateGeoVisibility(){
   const el = document.getElementById('fsub-geo');
@@ -1511,15 +1660,14 @@ function finishCreate(){
     return;
   }
   const domainVal = draft.target==='audience'
-    ? (audiences.find(a=>a.id===draft.audienceId)?.name || 'Аудитория')
+    ? (audiences.find(a=>a.id===packAud.selectedId)?.name || 'Аудитория не выбрана')
     : (targetLists[draft.target].domain.join(', ') || '—');
-  const link = document.getElementById('c-link-input')?.value || '';
   const geo = selectedGeo.join(', ');
   draft.branches.forEach(b=>{
     const row = {
       id:'ps_'+Math.floor(Math.random()*9000+1000), name: draft.packName.slice(0,60),
       type: draft.type, domain: domainVal, target: draft.target,
-      geo, on:true, langs: b.langs, plats:{ios:true,android:true,pwa:true}, link,
+      geo, on:true, langs: b.langs, plats:{ios:true,android:true,pwa:true},
     };
     if (draft.type==='event'){
       row.event = b.event; row.delay = chainSteps[0]||'5m';
@@ -1542,9 +1690,11 @@ function startCreate(){
   document.getElementById('rail-dot-what')?.classList.remove('filled');
   document.getElementById('pack-name-input').value = '';
   document.getElementById('pack-name-error').style.display = 'none';
-  targetLists = {domain:{domain:['brz-domain.com'], app:[]}, naming:{domain:[], app:[]}};
+  targetLists = {domain:{domain:['brz-domain.com'], app:[], subs:{}}, naming:{domain:[], app:[], subs:{}}};
   selectedGeo = [];
-  mselOpen.geo = false;
+  mselOpen.geo = false; mselOpen.sub = false;
+  subActiveKey = 'sub2'; subFilter = '';
+  resetPackAud();
   document.getElementById('geo-msel-wrap').innerHTML = renderMsel('geo', 'Гео');
   setTargetMode('domain');
   setCreateType('event');
@@ -1568,6 +1718,45 @@ let audiences = [
   {id:'aud_1', name:'UA+KZ, событие деп', groups:[{join:'AND', conds:[{field:'geo', val:['UA','KZ']}, {field:'event', val:['dep']}]}], reach: 18420},
 ];
 let audGroups = [];
+/* в форме пуша — только выбор готовой аудитории; создание вынесено в модалку */
+let packAud = {selectedId:null, groups:[]};
+function resetPackAud(){ packAud = {selectedId:null, groups:[{join:'AND', conds:[{field:'geo', val:[]}]}]}; }
+resetPackAud();
+function renderPackAudience(){
+  const sel = audiences.find(a=>a.id===packAud.selectedId);
+  return `<div style="display:flex; gap:8px; align-items:flex-end">
+      <div class="field" style="flex:1; margin:0"><label class="fl">Шаблон аудитории</label>
+        <select id="pack-aud-template" onchange="selectPackAudience(this.value)">
+          <option value="">— Не выбрана —</option>
+          ${audiences.map(a=>`<option value="${a.id}" ${packAud.selectedId===a.id?'selected':''}>${escHtml(a.name)} — ${a.reach.toLocaleString('ru-RU')}</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn" onclick="openAudModal()">+ Создать аудиторию</button>
+    </div>
+    <div class="cell-sub" style="margin-top:8px">${sel
+      ? 'Охват выбранной аудитории: <b>'+sel.reach.toLocaleString('ru-RU')+'</b>. Формула пересчитывается на момент отправки, а не замораживает список юзеров.'
+      : 'Выберите сохранённую аудиторию или создайте новую — набор условий переиспользуется в других пушах.'}</div>`;
+}
+function selectPackAudience(id){
+  packAud.selectedId = id || null;
+  setTargetMode('audience');
+}
+function openAudModal(){
+  packAud.groups = [{join:'AND', conds:[{field:'geo', val:[]}]}];
+  document.getElementById('pack-aud-name').value = '';
+  document.getElementById('aud-modal').classList.add('show');
+  renderAudGroups('pack');
+}
+function closeAudModal(){ document.getElementById('aud-modal').classList.remove('show'); }
+function createAudFromModal(){
+  const name = document.getElementById('pack-aud-name').value.trim() || 'Аудитория '+(audiences.length+1);
+  const a = {id:'aud_'+Math.floor(Math.random()*9000+1000), name, groups: JSON.parse(JSON.stringify(packAud.groups)), reach: estimateReach(packAud.groups)};
+  audiences.push(a);
+  packAud.selectedId = a.id;
+  closeAudModal();
+  renderAudiencesList();
+  setTargetMode('audience');
+}
 function renderAudiencesList(){
   document.getElementById('audiences-tbody').innerHTML = audiences.length ? audiences.map(a=>{
     const summary = a.groups.map(g=>g.conds.map(c=>{
@@ -1585,74 +1774,87 @@ function openAudienceCreate(){
   audGroups = [{join:'AND', conds:[{field:'geo', val:[]}]}];
   document.getElementById('aud-name-input').value = '';
   document.getElementById('audience-create-card').style.display = 'block';
-  renderAudGroups();
+  renderAudGroups('aud');
 }
 function closeAudienceCreate(){ document.getElementById('audience-create-card').style.display = 'none'; }
-function renderAudGroups(){
-  document.getElementById('aud-groups').innerHTML = audGroups.map((g,gi)=>`
+/* конструктор условий переиспользуется двумя контекстами: рудиментарный раздел «Аудитории» и встроенный в создание пуша */
+const AUD_CTX = {
+  aud:  {mount:'aud-groups',      reach:'aud-reach-preview', groups:()=>audGroups},
+  pack: {mount:'pack-aud-groups', reach:'pack-aud-reach',    groups:()=>packAud.groups},
+};
+function renderAudGroups(ctx){
+  const cx = AUD_CTX[ctx], groups = cx.groups();
+  const mount = document.getElementById(cx.mount);
+  if (!mount) return;
+  mount.innerHTML = groups.map((g,gi)=>`
     <div class="grp">
       <div class="grp-head"><span class="grp-title">Группа ${gi+1}</span>
-        <span class="joiner"><button class="${g.join==='AND'?'active':''}" onclick="setAudGJoin(${gi},'AND')">И</button><button class="${g.join==='OR'?'active':''}" onclick="setAudGJoin(${gi},'OR')">ИЛИ</button></span>
-        <span style="flex:1"></span><span class="rm" onclick="rmAudGroup(${gi})">×</span>
+        <span class="joiner"><button class="${g.join==='AND'?'active':''}" onclick="setAudGJoin('${ctx}',${gi},'AND')">И</button><button class="${g.join==='OR'?'active':''}" onclick="setAudGJoin('${ctx}',${gi},'OR')">ИЛИ</button></span>
+        <span style="flex:1"></span><span class="rm" onclick="rmAudGroup('${ctx}',${gi})">×</span>
       </div>
-      ${g.conds.map((c,ci)=>renderAudCond(gi,ci,c)).join('')}
-      <button class="btn sm" onclick="addAudCond(${gi})">+ условие</button>
+      ${g.conds.map((c,ci)=>renderAudCond(ctx,gi,ci,c)).join('')}
+      <button class="btn sm" onclick="addAudCond('${ctx}',${gi})">+ условие</button>
     </div>
   `).join('');
-  updateAudReachPreview();
+  updateAudReachPreview(ctx);
 }
-function renderAudCond(gi, ci, c){
+function renderAudCond(ctx, gi, ci, c){
   const def = AUD_FIELD_DEFS[c.field];
-  const fieldSelect = `<select onchange="updAudCondField(${gi},${ci},this.value)" style="flex:1">${Object.entries(AUD_FIELD_DEFS).map(([k,d])=>`<option value="${k}" ${c.field===k?'selected':''}>${d.label}</option>`).join('')}</select>`;
+  const fieldSelect = `<select onchange="updAudCondField('${ctx}',${gi},${ci},this.value)" style="flex:1">${Object.entries(AUD_FIELD_DEFS).map(([k,d])=>`<option value="${k}" ${c.field===k?'selected':''}>${d.label}</option>`).join('')}</select>`;
   let valueHtml;
   if (def.type==='chips'){
     const selected = Array.isArray(c.val) ? c.val : [];
     const allSelected = def.options.length>0 && def.options.every(o=>selected.includes(o));
     valueHtml = `<div style="margin-top:8px">
-      <button class="btn sm ghost" style="padding:2px 8px; margin-bottom:6px" onclick="audCondSelectAll(${gi},${ci})">${allSelected?'Снять все':'Выбрать все'}</button>
+      <button class="btn sm ghost" style="padding:2px 8px; margin-bottom:6px" onclick="audCondSelectAll('${ctx}',${gi},${ci})">${allSelected?'Снять все':'Выбрать все'}</button>
       <div class="chip-row">${def.options.map(o=>{
         const lbl = def.optionLabels ? def.optionLabels[o] : o;
-        return `<button class="chip ${selected.includes(o)?'active':''}" onclick="toggleAudCondValue(${gi},${ci},'${o.replace(/'/g,"\\'")}')">${lbl}</button>`;
+        return `<button class="chip ${selected.includes(o)?'active':''}" onclick="toggleAudCondValue('${ctx}',${gi},${ci},'${o.replace(/'/g,"\\'")}')">${lbl}</button>`;
       }).join('')}</div>
     </div>`;
   } else {
-    valueHtml = `<textarea rows="2" class="mono" style="margin-top:8px" placeholder="1 значение = 1 строка" oninput="updAudCondText(${gi},${ci},this.value)">${escHtml(c.val||'')}</textarea>`;
+    valueHtml = `<textarea rows="2" class="mono" style="margin-top:8px" placeholder="1 значение = 1 строка" oninput="updAudCondText('${ctx}',${gi},${ci},this.value)">${escHtml(c.val||'')}</textarea>`;
   }
   return `<div class="cond" style="flex-direction:column; align-items:stretch">
     <div style="display:flex; gap:8px; align-items:center">
       ${fieldSelect}
-      <span class="rm" onclick="rmAudCond(${gi},${ci})">×</span>
+      <span class="rm" onclick="rmAudCond('${ctx}',${gi},${ci})">×</span>
     </div>
     ${valueHtml}
   </div>`;
 }
-function setAudGJoin(gi,v){ audGroups[gi].join=v; renderAudGroups(); }
-function addAudGroup(){ audGroups.push({join:'AND', conds:[{field:'geo', val:[]}]}); renderAudGroups(); }
-function rmAudGroup(gi){ audGroups.splice(gi,1); renderAudGroups(); }
-function addAudCond(gi){ audGroups[gi].conds.push({field:'geo', val:[]}); renderAudGroups(); }
-function rmAudCond(gi,ci){ audGroups[gi].conds.splice(ci,1); if(!audGroups[gi].conds.length) audGroups.splice(gi,1); renderAudGroups(); }
-function updAudCondField(gi,ci,field){
-  const def = AUD_FIELD_DEFS[field];
-  audGroups[gi].conds[ci] = {field, val: def.type==='chips' ? [] : ''};
-  renderAudGroups();
+function setAudGJoin(ctx,gi,v){ AUD_CTX[ctx].groups()[gi].join=v; renderAudGroups(ctx); }
+function addAudGroup(ctx){ AUD_CTX[ctx].groups().push({join:'AND', conds:[{field:'geo', val:[]}]}); renderAudGroups(ctx); }
+function rmAudGroup(ctx,gi){ AUD_CTX[ctx].groups().splice(gi,1); renderAudGroups(ctx); }
+function addAudCond(ctx,gi){ AUD_CTX[ctx].groups()[gi].conds.push({field:'geo', val:[]}); renderAudGroups(ctx); }
+function rmAudCond(ctx,gi,ci){
+  const groups = AUD_CTX[ctx].groups();
+  groups[gi].conds.splice(ci,1);
+  if (!groups[gi].conds.length) groups.splice(gi,1);
+  renderAudGroups(ctx);
 }
-function toggleAudCondValue(gi,ci,opt){
-  const c = audGroups[gi].conds[ci];
+function updAudCondField(ctx,gi,ci,field){
+  const def = AUD_FIELD_DEFS[field];
+  AUD_CTX[ctx].groups()[gi].conds[ci] = {field, val: def.type==='chips' ? [] : ''};
+  renderAudGroups(ctx);
+}
+function toggleAudCondValue(ctx,gi,ci,opt){
+  const c = AUD_CTX[ctx].groups()[gi].conds[ci];
   if (!Array.isArray(c.val)) c.val = [];
   const idx = c.val.indexOf(opt);
   if (idx>=0) c.val.splice(idx,1); else c.val.push(opt);
-  renderAudGroups();
+  renderAudGroups(ctx);
 }
-function audCondSelectAll(gi,ci){
-  const c = audGroups[gi].conds[ci];
+function audCondSelectAll(ctx,gi,ci){
+  const c = AUD_CTX[ctx].groups()[gi].conds[ci];
   const def = AUD_FIELD_DEFS[c.field];
   const allSelected = def.options.every(o=>(c.val||[]).includes(o));
   c.val = allSelected ? [] : [...def.options];
-  renderAudGroups();
+  renderAudGroups(ctx);
 }
-function updAudCondText(gi,ci,val){
-  audGroups[gi].conds[ci].val = val;
-  updateAudReachPreview();
+function updAudCondText(ctx,gi,ci,val){
+  AUD_CTX[ctx].groups()[gi].conds[ci].val = val;
+  updateAudReachPreview(ctx);
 }
 function estimateReach(groups){
   const base = SUBS_TOTAL;
@@ -1678,8 +1880,10 @@ function estimateReach(groups){
   if (!factors.length) return base;
   return Math.round(base * factors.reduce((a,b)=>Math.max(a,b), 0));
 }
-function updateAudReachPreview(){
-  document.getElementById('aud-reach-preview').textContent = estimateReach(audGroups).toLocaleString('ru-RU');
+function updateAudReachPreview(ctx){
+  const cx = AUD_CTX[ctx];
+  const el = document.getElementById(cx.reach);
+  if (el) el.textContent = estimateReach(cx.groups()).toLocaleString('ru-RU');
 }
 function saveNewAudience(){
   const name = document.getElementById('aud-name-input').value.trim() || 'Новая аудитория '+(audiences.length+1);
