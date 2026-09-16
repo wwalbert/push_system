@@ -1421,8 +1421,8 @@ function renderBranches(){
         <div class="grp-head" style="flex-wrap:wrap">
           ${headTitle}${headExtra}
           <div class="seg sm">
-            <button class="${!auto?'active':''}" onclick="setBranchTranslate(${bi},'manual')">Ручной перевод</button>
-            <button class="${auto?'active':''}" onclick="setBranchTranslate(${bi},'auto')">Автоперевод</button>
+            <button class="${auto?'active':''}" onclick="setBranchTranslate(${bi},'manual')">Ручной перевод</button>
+            <button class="${!auto?'active':''}" onclick="setBranchTranslate(${bi},'auto')">Автоперевод</button>
           </div>
           <span style="flex:1"></span>
           <span onclick="removeBranch(${bi})" style="cursor:pointer; color:var(--text-3); font-size:16px; padding:0 4px">×</span>
