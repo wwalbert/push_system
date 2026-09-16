@@ -83,6 +83,8 @@
   .seg button{ border:none; background:transparent; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:650; color:var(--text-2); cursor:pointer; font-family:inherit; }
   .seg button.active{ background:var(--accent); color:#fff; }
   .seg button:disabled{ opacity:.4; cursor:not-allowed; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .seg.sm button{ padding:5px 11px; font-size:12px; }
 
   .stats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:12px; margin:18px 0; }
   .stat{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
@@ -310,7 +312,6 @@
     <div class="sb-pill green open ring" id="sb-push-pill" onclick="toggleSbGroup('push')"><span class="sb-pill-icon">🔔</span><span class="sb-pill-label" style="color:var(--text)">Пуши</span><span class="sb-new-badge">NEW</span><span class="sb-pill-chev" id="sb-push-chev">▴</span></div>
     <div class="sb-items" id="sb-push-items">
       <div class="sb-item active" data-view="pushes" onclick="showView('pushes')"><span class="sb-item-icon">🔔</span>Все пуши</div>
-      <div class="sb-item" data-view="audiences" onclick="showView('audiences')"><span class="sb-item-icon">◎</span>Аудитории</div>
     </div>
 
     <!-- ====== НОВОЕ: Статистика (push) ====== -->
@@ -508,40 +509,6 @@
         </div>
       </div>
 
-      <!-- ============== АУДИТОРИИ ============== -->
-      <div class="view" id="view-audiences">
-        <div class="header">
-          <div>
-            <h1 class="title">Аудитории</h1>
-            <div class="subtitle">Переиспользуемый набор условий — доступен при создании пуша как альтернатива домену/неймингу. Формула пересчитывается на момент отправки, список не заморожен.</div>
-          </div>
-          <div class="header-spacer"></div>
-          <button class="btn primary" onclick="openAudienceCreate()">+ Создать аудиторию</button>
-        </div>
-
-        <div class="table-card" id="audiences-list-card">
-          <div class="table-scroll">
-            <table>
-              <thead><tr><th>Название</th><th>Условия</th><th>Охват</th><th></th></tr></thead>
-              <tbody id="audiences-tbody"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="card" id="audience-create-card" style="display:none; margin-top:16px">
-          <h2>Новая аудитория</h2>
-          <div class="field"><label class="fl">Название</label><input type="text" id="aud-name-input" placeholder="напр. UA+KZ, домен, деп 1+"></div>
-          <div class="fsub-label" style="margin-top:16px">Условия</div>
-          <div id="aud-groups"></div>
-          <button class="btn sm" onclick="addAudGroup('aud')">+ Группа условий</button>
-          <div class="reach-mini" style="margin-top:16px"><span>Оценочный охват:</span><b id="aud-reach-preview">—</b></div>
-          <div class="apply-row" style="margin-top:16px; display:flex; justify-content:flex-end; gap:8px">
-            <button class="btn" onclick="closeAudienceCreate()">Отмена</button>
-            <button class="btn primary" onclick="saveNewAudience()">Сохранить аудиторию</button>
-          </div>
-        </div>
-      </div>
-
       <!-- ============== СТАТИСТИКА (заглушка Э4) ============== -->
       <div class="view" id="view-stats">
         <div class="header">
@@ -694,7 +661,6 @@ function showView(v){
   document.getElementById('view-'+v).classList.add('active');
   document.querySelectorAll('.sb-item[data-view]').forEach(x=>x.classList.toggle('active', x.dataset.view===v));
   if (v==='pushes') renderPushList();
-  if (v==='audiences') renderAudiencesList();
   if (v==='stats') renderStatsView();
 }
 
@@ -1362,9 +1328,9 @@ function addChainStep(){ chainSteps.push('1h'); renderChainSteps(); }
 const WEEKDAYS = [['mon','пн'],['tue','вт'],['wed','ср'],['thu','чт'],['fri','пт'],['sat','сб'],['sun','вс']];
 function makeBranch(type){
   const langs = {default:{title:'', msg:''}};
-  if (type==='interval') return {date:'', time:'00:05', enddate:'', repeat:'Каждую неделю', audience:'all', weekdays:[], langs};
-  if (type==='onetime') return {date:'', time:'10:00', audience:'all', weekdays:[], langs};
-  return {event:'install', langs};
+  if (type==='interval') return {date:'', time:'00:05', enddate:'', repeat:'Каждую неделю', audience:'all', weekdays:[], langs, translate:'manual'};
+  if (type==='onetime') return {date:'', time:'10:00', audience:'all', weekdays:[], langs, translate:'manual'};
+  return {event:'install', langs, translate:'manual'};
 }
 function usedEvents(excludeIdx){ return draft.branches.filter((b,i)=>i!==excludeIdx).map(b=>b.event); }
 function toggleBranchWeekday(bi, day){
@@ -1450,9 +1416,14 @@ function renderBranches(){
         if ((b.audience||'all')==='redep2') headExtra = '<span class="needs-decision" style="margin-left:2px">нужен постбэк на редеп</span>';
       }
       const metaFields = renderBranchMetaFields(b, bi, t);
+      const auto = b.translate==='auto';
       return `<div class="grp" style="padding:16px 16px 18px; margin-bottom:14px">
-        <div class="grp-head">
+        <div class="grp-head" style="flex-wrap:wrap">
           ${headTitle}${headExtra}
+          <div class="seg sm">
+            <button class="${!auto?'active':''}" onclick="setBranchTranslate(${bi},'manual')">Ручной перевод</button>
+            <button class="${auto?'active':''}" onclick="setBranchTranslate(${bi},'auto')">Автоперевод</button>
+          </div>
           <span style="flex:1"></span>
           <span onclick="removeBranch(${bi})" style="cursor:pointer; color:var(--text-3); font-size:16px; padding:0 4px">×</span>
         </div>
@@ -1460,7 +1431,8 @@ function renderBranches(){
         <div class="fsub-label" style="margin-top:14px; margin-bottom:8px">Тексты</div>
         <div id="lang-blocks-b${bi}"></div>
         <div class="dd-wrap" style="position:relative; display:inline-block; margin-top:2px">
-          <button class="btn sm" onclick="toggleAddLangMenu('b${bi}')">+ Добавить язык</button>
+          <button class="btn sm" ${auto?'disabled':''} onclick="toggleAddLangMenu('b${bi}')">+ Добавить язык</button>
+          ${auto?'<span class="cell-sub" style="margin-left:8px">Языки добавит автоперевод</span>':''}
           <div id="add-lang-menu-b${bi}" style="display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:20; min-width:160px; background:var(--surface); border:1px solid var(--border-2); border-radius:10px; box-shadow:var(--shadow-md); padding:6px;"></div>
         </div>
       </div>`;
@@ -1471,6 +1443,10 @@ function renderBranches(){
   if (addBtn) addBtn.style.display = (t==='event' && draft.branches.length>=BRANCH_EVENTS.length) ? 'none' : '';
   const filled = draft.branches.some(b=>Object.values(b.langs).some(l=>l.title||l.msg));
   document.getElementById('rail-dot-what').classList.toggle('filled', filled);
+}
+function setBranchTranslate(bi, mode){
+  draft.branches[bi].translate = mode;
+  renderBranches();
 }
 function setBranchMeta(bi, field, val){
   draft.branches[bi][field] = val;
@@ -1721,7 +1697,6 @@ const AUD_FIELD_DEFS = {
 let audiences = [
   {id:'aud_1', name:'UA+KZ, событие деп', groups:[{join:'AND', conds:[{field:'geo', val:['UA','KZ']}, {field:'event', val:['dep']}]}], reach: 18420},
 ];
-let audGroups = [];
 /* в форме пуша — только выбор готовой аудитории; создание вынесено в модалку */
 let packAud = {selectedId:null, groups:[]};
 function resetPackAud(){ packAud = {selectedId:null, groups:[{join:'AND', conds:[{field:'geo', val:[]}]}]}; }
@@ -1759,36 +1734,10 @@ function createAudFromModal(){
   audiences.push(a);
   packAud.selectedId = a.id;
   closeAudModal();
-  renderAudiencesList();
   setTargetMode('audience');
 }
-function renderAudiencesList(){
-  document.getElementById('audiences-tbody').innerHTML = audiences.length ? audiences.map(a=>{
-    const summary = a.groups.map(g=>g.conds.map(c=>{
-      const def = AUD_FIELD_DEFS[c.field];
-      const valStr = def.type==='sub'
-        ? (c.val && c.val.vals && c.val.vals.length ? c.val.key+' = '+c.val.vals.join('/') : '—')
-        : Array.isArray(c.val)
-          ? (c.val.length ? c.val.map(v=>def.optionLabels?def.optionLabels[v]:v).join('/') : '—')
-          : ((c.val||'').trim() || '—');
-      return def.label+': '+valStr;
-    }).join(g.join==='AND'?' И ':' ИЛИ ')).join(' / ');
-    return `<tr><td>${a.name}</td><td class="cell-sub">${summary}</td><td>${a.reach.toLocaleString('ru-RU')}</td><td><span onclick="deleteAudience('${a.id}')" style="cursor:pointer; color:var(--text-3); font-size:15px">×</span></td></tr>`;
-  }).join('') : `<tr><td colspan="4"><div class="empty-state"><div class="big">◎</div>Аудиторий пока нет<br><button class="btn primary sm" style="margin-top:14px" onclick="openAudienceCreate()">+ Создать аудиторию</button></div></td></tr>`;
-}
-function deleteAudience(id){ audiences = audiences.filter(a=>a.id!==id); renderAudiencesList(); }
-function openAudienceCreate(){
-  audSubOpen = null; audSubFilter = '';
-  audGroups = [{join:'AND', conds:[{field:'geo', val:[]}]}];
-  document.getElementById('aud-name-input').value = '';
-  document.getElementById('audience-create-card').style.display = 'block';
-  renderAudGroups('aud');
-}
-function closeAudienceCreate(){ document.getElementById('audience-create-card').style.display = 'none'; }
-/* конструктор условий переиспользуется двумя контекстами: рудиментарный раздел «Аудитории» и встроенный в создание пуша */
 const AUD_CTX = {
-  aud:  {mount:'aud-groups',      reach:'aud-reach-preview', groups:()=>audGroups},
-  pack: {mount:'pack-aud-groups', reach:'pack-aud-reach',    groups:()=>packAud.groups},
+  pack: {mount:'pack-aud-groups', reach:'pack-aud-reach', groups:()=>packAud.groups},
 };
 function renderAudGroups(ctx){
   const cx = AUD_CTX[ctx], groups = cx.groups();
@@ -2002,12 +1951,6 @@ function updateAudReachPreview(ctx){
   const cx = AUD_CTX[ctx];
   const el = document.getElementById(cx.reach);
   if (el) el.textContent = estimateReach(cx.groups()).toLocaleString('ru-RU');
-}
-function saveNewAudience(){
-  const name = document.getElementById('aud-name-input').value.trim() || 'Новая аудитория '+(audiences.length+1);
-  audiences.push({id:'aud_'+Math.floor(Math.random()*9000+1000), name, groups: JSON.parse(JSON.stringify(audGroups)), reach: estimateReach(audGroups)});
-  closeAudienceCreate();
-  renderAudiencesList();
 }
 
 /* ===================== INIT ===================== */
